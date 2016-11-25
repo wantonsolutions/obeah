@@ -46,11 +46,12 @@ func setFlags() {
 
 func main() {
 	setFlags()
+	makemake
 
 	options := make(map[string]string)
 	//set options relevent to all programs
 	if verbose {
-		logger = log.New(os.Stdout, "logger: ", log.Lshortfile)
+		logger = log.New(os.Stdout, "[Obeah Setup] ", log.Lshortfile)
 	} else {
 		var buf bytes.Buffer
 		logger = log.New(&buf, "logger: ", log.Lshortfile)
@@ -99,7 +100,7 @@ func main() {
 
 		options["file"] = file
 		//get source
-		source := obeah.Insturment(options)
+		source := obeah.Insturment(options, logger)
 		err = writeFile(file,source[file])
 		if err != nil {
 			log.Fatal(err)

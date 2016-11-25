@@ -12,19 +12,26 @@ import(
 	"fmt"
 )
 
+const CHARSTART = 913
+
 var (
 	debug         = false
 	Directory = ""
 	File      = ""
 	Pipe		  = ""
+	logger	*log.Logger
 )
 
-func Insturment(options map[string]string) map[string]string {
+func Insturment(options map[string]string, l *log.Logger) map[string]string {
+	logger = l
+	logger.SetPrefix("[Obeah Instrument] ")
 	initalize(options)
 	p, err := getProgramWrapper()
 	if err != nil {
 		panic(err)
 	}
+	sdfasdfasdfsaf
+
 	instrumentedOutput := make(map[string]string)
 	for pnum, pack := range p.Packages {
 		for snum, _ := range pack.Sources {
@@ -33,6 +40,7 @@ func Insturment(options map[string]string) map[string]string {
 			instrumentedOutput[p.Packages[pnum].Sources[snum].Filename] = instSource
 		}
 	}
+	
 	return instrumentedOutput
 }
 
@@ -47,7 +55,7 @@ func InstrumentSource(fset *token.FileSet, file *ast.File) string {
 		mergedSource = append(mergedSource,split[i])
 		if lines[i+1] {
 			//mergedSource = append(mergedSource,fmt.Sprintf("obeah.Log(`%d`)\n",i+1))
-			mergedSource = append(mergedSource,"obeah.Log(\""+string(id+913)+"\")\n")
+			mergedSource = append(mergedSource,"obeah.Log(\""+string(id+CHARSTART)+"\")\n")
 			id++
 		}
 	}
