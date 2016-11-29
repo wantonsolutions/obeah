@@ -35,6 +35,7 @@ func Insturment(options map[string]string, l *log.Logger) map[string]string {
 	for pnum, pack := range p.Packages {
 		for snum, _ := range pack.Sources {
 			for _, cfg := range p.Packages[pnum].Sources[snum].Cfgs {
+				fmt.Println("PRINTING CFGs")
 				fmt.Println(cfg.Cfg.String(p.Fset, func(s ast.Stmt) string {
 					return "(test)"
 				}))
