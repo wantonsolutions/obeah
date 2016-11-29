@@ -1,25 +1,25 @@
 package obeah
 
-import(
-
+import (
 	"bitbucket.org/bestchai/dinv/programslicer"
-	"strings"
-	"go/ast"
-	"go/printer"
-	"go/token"
-	"go/format"
 	"bytes"
 	"fmt"
+	"go/ast"
+	"go/format"
+	"go/printer"
+	"go/token"
+	"log"
+	"strings"
 )
 
 const CHARSTART = 913
 
 var (
-	debug         = false
+	debug     = false
 	Directory = ""
 	File      = ""
-	Pipe		  = ""
-	logger	*log.Logger
+	Pipe      = ""
+	logger    *log.Logger
 )
 
 func Insturment(options map[string]string, l *log.Logger) map[string]string {
@@ -30,17 +30,21 @@ func Insturment(options map[string]string, l *log.Logger) map[string]string {
 	if err != nil {
 		panic(err)
 	}
-	sdfasdfasdfsaf
 
 	instrumentedOutput := make(map[string]string)
 	for pnum, pack := range p.Packages {
 		for snum, _ := range pack.Sources {
-			instSource := InstrumentSource(p.Fset,p.Packages[pnum].Sources[snum].Comments)
+			for _, cfg := range p.Packages[pnum].Sources[snum].Cfgs {
+				fmt.Println(cfg.Cfg.String(p.Fset, func(s ast.Stmt) string {
+					return "(test)"
+				}))
+			}
+			instSource := InstrumentSource(p.Fset, p.Packages[pnum].Sources[snum].Comments)
 			p.Packages[pnum].Sources[snum].Text = instSource
 			instrumentedOutput[p.Packages[pnum].Sources[snum].Filename] = instSource
 		}
 	}
-	
+
 	return instrumentedOutput
 }
 
@@ -48,14 +52,14 @@ func InstrumentSource(fset *token.FileSet, file *ast.File) string {
 	lines := ControlFlowLines(fset, file)
 	buf := new(bytes.Buffer)
 	printer.Fprint(buf, fset, file)
-	split := strings.SplitAfter(buf.String(),"\n")
-	mergedSource := make([]string,0)
+	split := strings.SplitAfter(buf.String(), "\n")
+	mergedSource := make([]string, 0)
 	id := 0
 	for i := range split {
-		mergedSource = append(mergedSource,split[i])
+		mergedSource = append(mergedSource, split[i])
 		if lines[i+1] {
 			//mergedSource = append(mergedSource,fmt.Sprintf("obeah.Log(`%d`)\n",i+1))
-			mergedSource = append(mergedSource,"obeah.Log(\""+string(id+CHARSTART)+"\")\n")
+			mergedSource = append(mergedSource, "obeah.Log(\""+string(id+CHARSTART)+"\")\n")
 			id++
 		}
 	}
@@ -68,16 +72,15 @@ func InstrumentSource(fset *token.FileSet, file *ast.File) string {
 	return string(formatted)
 }
 
-
 func ControlFlowLines(fset *token.FileSet, file *ast.File) map[int]bool {
-	lines := make(map[int]bool,0)
-	ast.Inspect(file , func(n ast.Node) bool {
-		switch c := n.(type){
+	lines := make(map[int]bool, 0)
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch c := n.(type) {
 		case *ast.BlockStmt, *ast.CaseClause:
-			switch c.(type){
+			switch c.(type) {
 			case *ast.SelectStmt, *ast.SwitchStmt:
 				break
-			default :
+			default:
 				lines[fset.Position(c.Pos()).Line] = true
 				break
 			}
@@ -88,15 +91,13 @@ func ControlFlowLines(fset *token.FileSet, file *ast.File) map[int]bool {
 	return lines
 }
 
-func mergeSource(source []string) string{
-	var output string 
-	for _  , line := range source {
+func mergeSource(source []string) string {
+	var output string
+	for _, line := range source {
 		output = output + line
 	}
 	return output
 }
-
-
 
 func initalize(options map[string]string) {
 	for setting := range options {

@@ -1,23 +1,22 @@
-
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
+	"fmt"
+	"github.com/wantonsolutions/obeah/obeah"
 	"log"
 	"os"
-	"bufio"
-	"fmt"
-	"runtime/pprof"
 	"regexp"
-	"github.com/wantonsolutions/obeah/obeah"
+	"runtime/pprof"
 )
 
 const (
 	//instrumenter defaults
 	defaultFilename  = ""
 	defaultDirectory = ""
-	defaultPipe = ""
+	defaultPipe      = ""
 )
 
 var (
@@ -29,7 +28,6 @@ var (
 	//options for both
 	verbose bool
 	debug   bool
-
 
 	logger *log.Logger
 )
@@ -46,7 +44,6 @@ func setFlags() {
 
 func main() {
 	setFlags()
-	makemake
 
 	options := make(map[string]string)
 	//set options relevent to all programs
@@ -63,7 +60,7 @@ func main() {
 
 	//filechecking //exclusive or with filename and directory
 	if file == defaultFilename && directory == defaultDirectory {
-		if len(os.Args) == 2 && !verbose{
+		if len(os.Args) == 2 && !verbose {
 			file = os.Args[1]
 		} else {
 			//try to read from pipe
@@ -83,7 +80,7 @@ func main() {
 
 	if pipe != defaultPipe {
 		options["pipe"] = pipe
-		source := obeah.Insturment(options)
+		source := obeah.Insturment(options, logger)
 		fmt.Print(source)
 		return
 	}
@@ -96,12 +93,12 @@ func main() {
 			print(a)
 			logger.Fatalf("Error: : %s\n", err.Error())
 		}
-		logger.Printf("Documenting %s\n",file)
+		logger.Printf("Documenting %s\n", file)
 
 		options["file"] = file
 		//get source
 		source := obeah.Insturment(options, logger)
-		err = writeFile(file,source[file])
+		err = writeFile(file, source[file])
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -117,20 +114,27 @@ func main() {
 		logger.Printf("Documenting Directory :%s\n", directory)
 		options["directory"] = directory
 
-		sources := obeah.Insturment(options)
+		sources := obeah.Insturment(options, logger)
 		for name, source := range sources {
-			err := writeFile(name,source)
-			if err != nil {
-				log.Fatal(err)
-			}
+			logger.Printf("%s\n%s\n", name, source)
+			/*
+				err := writeFile(name, source)
+				if err != nil {
+					log.Fatal(err)
+				}
+			*/
 		}
 	}
 
 }
 
+func printSource(source string) {
+	fmt.Println(source)
+}
+
 func writeFile(filename, source string) error {
 	//overwrite file
-	ofile, err := os.OpenFile(filename,os.O_RDWR,os.FileMode(0666)) // For read access.
+	ofile, err := os.OpenFile(filename, os.O_RDWR, os.FileMode(0666)) // For read access.
 	defer ofile.Close()
 	if err != nil {
 		return err
@@ -139,8 +143,8 @@ func writeFile(filename, source string) error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("Writing over source of %s\n",filename);
-	_, err = ofile.WriteString(source);
+	logger.Printf("Writing over source of %s\n", filename)
+	_, err = ofile.WriteString(source)
 	if err != nil {
 		return err
 	}
@@ -191,4 +195,3 @@ func getCallingFunctionID() string {
 	fmt.Printf("%s\n", buf)
 	return ""
 }
-
