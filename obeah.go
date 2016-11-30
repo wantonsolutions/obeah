@@ -98,10 +98,13 @@ func main() {
 		options["file"] = file
 		//get source
 		source := obeah.Insturment(options, logger)
-		err = writeFile(file, source[file])
-		if err != nil {
-			log.Fatal(err)
-		}
+		printSource(source[file])
+		/*
+			err = writeFile(file, source[file])
+			if err != nil {
+				log.Fatal(err)
+			}
+		*/
 	}
 
 	// TODO remove test if the directory is valid. If so add to options, else

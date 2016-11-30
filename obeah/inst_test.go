@@ -1,9 +1,9 @@
 package obeah
 
 import (
+	"bitbucket.org/bestchai/dinv/programslicer"
 	"fmt"
 	"testing"
-	"bitbucket.org/bestchai/dinv/programslicer"
 )
 
 const ifSourcePre = `
@@ -83,30 +83,29 @@ func main() {
 	}
 }`
 
-
-func TestIfInstrument(t *testing.T){
+func TestIfInstrument(t *testing.T) {
 	program, err := programslicer.GetWrapperFromString(ifSourcePre)
 	if err != nil {
 		t.Error(err)
 	}
-	postSource := InstrumentSource(program.Fset,program.Packages[0].Sources[0].Comments)
+	postSource := InstrumentSource(program.Fset, program.Packages[0].Sources[0].Comments)
 	fmt.Println(postSource)
 }
 
-func TestForInstrument(t *testing.T){
+func TestForInstrument(t *testing.T) {
 	program, err := programslicer.GetWrapperFromString(forSourcePre)
 	if err != nil {
 		t.Error(err)
 	}
-	postSource := InstrumentSource(program.Fset,program.Packages[0].Sources[0].Comments)
+	postSource := InstrumentSource(program.Fset, program.Packages[0].Sources[0].Comments)
 	fmt.Println(postSource)
 }
 
-func TestSwitchInstrument(t *testing.T){
+func TestSwitchInstrument(t *testing.T) {
 	program, err := programslicer.GetWrapperFromString(switchSourcePre)
 	if err != nil {
 		t.Error(err)
 	}
-	postSource := InstrumentSource(program.Fset,program.Packages[0].Sources[0].Comments)
+	postSource := InstrumentSource(program.Fset, program.Packages[0].Sources[0].Comments)
 	fmt.Println(postSource)
 }
