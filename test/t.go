@@ -21,6 +21,13 @@ func main() {
 		a += i
 	}
 	if a < 2 {
+        if a < a {
+            a++
+        } else if a > a {
+            a--
+        } else {
+            a = 0
+        }
 		a = 5
 	} else if a > 6 {
 		a = 6
