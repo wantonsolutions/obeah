@@ -27,12 +27,12 @@ type Flow struct {
 	Id        string
 	Line      int
 	Child     []*Flow
-	Condition string
+	Condition []string
 	Node      ast.Node
 }
 
 func NewFlow() *Flow {
-	return &Flow{Line: -1, Child: make([]*Flow, 0), Condition: "", Node: nil}
+	return &Flow{Line: -1, Child: make([]*Flow, 0), Condition: make([]string,0), Node: nil}
 }
 
 func Insturment(options map[string]string, l *log.Logger) map[string]string {
@@ -47,12 +47,6 @@ func Insturment(options map[string]string, l *log.Logger) map[string]string {
 	instrumentedOutput := make(map[string]string)
 	for pnum, pack := range p.Packages {
 		for snum, _ := range pack.Sources {
-			for _, cfg := range p.Packages[pnum].Sources[snum].Cfgs {
-				fmt.Println("PRINTING CFGs")
-				fmt.Println(cfg.Cfg.String(p.Fset, func(s ast.Stmt) string {
-					return "(test)"
-				}))
-			}
 			instSource := InstrumentSource(p.Fset, p.Packages[pnum].Sources[snum].Comments)
 			p.Packages[pnum].Sources[snum].Text = instSource
 			instrumentedOutput[p.Packages[pnum].Sources[snum].Filename] = instSource
@@ -69,17 +63,19 @@ func InstrumentSource(fset *token.FileSet, file *ast.File) string {
 	split := strings.SplitAfter(buf.String(), "\n")
 	mergedSource := make([]string, 0)
 	id := 0
+    ast.Print(fset,file)
 	for i := range split {
 		mergedSource = append(mergedSource, split[i])
 		if _, ok := lines[i+1]; ok {
 			//mergedSource = append(mergedSource,fmt.Sprintf("obeah.Log(`%d`)\n",i+1))
 			marker := fmt.Sprintf("%s-%d", lines[i+1].Id, lines[i+1].Line)
-			mergedSource = append(mergedSource, "obeah.Log(\""+marker+"\")\n")
+			cond := condToString(lines[i+1].Condition)
+			mergedSource = append(mergedSource, "obeah.Log(\""+marker+"\",\""+cond+"\")\n")
 			id++
 		}
 	}
 	instrumented := mergeSource(mergedSource)
-	fmt.Println(instrumented)
+	//fmt.Println(instrumented)
 	formatted, err := format.Source([]byte(instrumented))
 	if err != nil {
 		panic(err)
@@ -106,13 +102,17 @@ func ControlFlowLines(fset *token.FileSet, file *ast.File) (*Flow, map[int]Flow)
 			f.Id = "TEST"
 			f.Line = fset.Position(c.Body.Pos()).Line
 			f.Node = n
-			f.Condition = nodeToString(c.Cond)
+			f.Condition = append(f.Condition,nodeToString(c.Cond))
+            //fmt.Println(f.Condition[0])
+			f.Condition = append(f.Condition,getCondition(n,file,fset)...)
 			parent, err := findParent(n, head, file, fset)
 			if err != nil {
 				panic(err)
 			}
 			parent.Child = append(parent.Child, f)
-			fmt.Println(f.Condition)
+            for _, c := range f.Condition  {
+                fmt.Println(c)
+            }
 			mapper[f.Line] = *f
 			break
 		case *ast.BlockStmt:
@@ -126,6 +126,21 @@ func ControlFlowLines(fset *token.FileSet, file *ast.File) (*Flow, map[int]Flow)
 		return true
 	})
 	return head, mapper
+}
+
+func getCondition(n ast.Node, file *ast.File, fset *token.FileSet) []string {
+	interval, _ := astutil.PathEnclosingInterval(file, n.Pos(), n.End())
+    condition := make([]string,0)
+    for i:=1; i<len(interval); i++ {
+        switch c := interval[i].(type) {
+        case *ast.IfStmt:
+            condition = append(condition,"!("+nodeToString(c.Cond)+")")
+            break
+        default:
+            break
+        }
+    }
+    return condition
 }
 
 //the returned ast.node is the parent if in this case
@@ -159,7 +174,7 @@ func findParent(n ast.Node, head *Flow, file *ast.File, fset *token.FileSet) (*F
 	if len(interval) < 2 { //|| exact {
 		return nil, fmt.Errorf("Node has no parent in its ast")
 	}
-	fmt.Println(nodeToString(interval[1]))
+	//fmt.Println(nodeToString(interval[1]))
 	parentNode := interval[1]
 	parentFlow := findFlowByNode(head, parentNode, fset)
 	if parentFlow == nil {
@@ -171,7 +186,7 @@ func findParent(n ast.Node, head *Flow, file *ast.File, fset *token.FileSet) (*F
 //depth first search of cfg
 func findFlowByNode(f *Flow, n ast.Node, fset *token.FileSet) *Flow {
 	//basecase
-	fmt.Printf("Flowline %d : Nodeline %d", f.Line, fset.Position(n.Pos()).Line)
+	//fmt.Printf("Flowline %d : Nodeline %d", f.Line, fset.Position(n.Pos()).Line)
 	if f.Line == fset.Position(n.Pos()).Line {
 		return f
 	}
@@ -242,4 +257,17 @@ func getProgramWrapper() (*programslicer.ProgramWrapper, error) {
 		}
 	}
 	return program, nil
+}
+
+func condToString(cond []string) string {
+    if len(cond) <= 0 {
+        return ""
+    }
+    var ret string
+    for i:= 0;i<len(cond)-1;i++{
+        //fmt.Println(cond[i])
+        ret += cond[i] + " && "
+    }
+    ret += cond[len(cond) -1]
+    return ret
 }
