@@ -101,11 +101,16 @@ func main() {
 		//get source
 		source, targets := obeah.Insturment(options, logger)
 		targetFile, err := os.Create("targets.enc")
+		defer targetFile.Close()
 		if err != nil {
 			logger.Fatal(err)
 		}
 		enc := gob.NewEncoder(targetFile)
-		enc.Encode(targets)
+		err = enc.Encode(targets)
+		if err != nil {
+			logger.Fatalf(err)
+		}
+
 		printSource(source[file])
 		err = writeFile(file, source[file])
 		if err != nil {
