@@ -11,7 +11,8 @@ fi
 
 
 ARCHIVE=$ROOT/test/log_archive
-TESTFILE=t.go
+# options [t.go , t2.go]
+TESTFILE=t2.go
 
 #install obeah
 cd $ROOT
@@ -19,14 +20,15 @@ go install
 
 #run on the test program
 cd test
-obeah -file=$TESTFILE -v
+cp clean/$TESTFILE test.go
+obeah -file=test.go -v
 
 #run the test program
-go run t.go
+go run test.go
 
 #generate cfg
 dot -Tpng -o runtimeCFG.png runtimeCFG.dot
-display runtimeCFG.png
+display runtimeCFG.png &
 
 
 #cleanup
@@ -40,7 +42,6 @@ mv $ARCHIVE/latest $dir
 mkdir -p $ARCHIVE/latest
 
 #archive the test file and its encoded state
-mv $TESTFILE *.enc *.png *.dot $ARCHIVE/latest
+mv test.go *.enc *.png *.dot $ARCHIVE/latest
 #restore the testfile
-cp ./clean/$TESTFILE ./
 

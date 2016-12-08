@@ -173,7 +173,6 @@ func Log(id string, extra ...interface{}) {
 
 //Taboo messes up your program
 func Taboo(vars ...interface{}) {
-    logger.Println("TABOO")
 	checkInit()
 	//print the last trace
 	tr := traces[len(traces)-1]
@@ -220,7 +219,7 @@ func traverseAndDraw(n *Node, entries *[]string,visited map[*Node]bool){
     }
     visited[n] = true
     for i := range n.Children {
-        connection := fmt.Sprintf("%s -> %s",n.Tar.Id, n.Children[i].Tar.Id)
+        connection := fmt.Sprintf("%s -> %s [ label = \"%d\" ] ",n.Tar.Id, n.Children[i].Tar.Id,n.ChildrenHits[i])
         *entries = append(*entries,connection)
         traverseAndDraw(n.Children[i],entries,visited)
     }
