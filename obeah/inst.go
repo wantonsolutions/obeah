@@ -29,7 +29,7 @@ type Target struct {
 	Line      int
 	Condition []string
 	Vars      map[string]Variable
-	Node      ast.Node
+//	Node      ast.Node
 }
 
 type Variable struct {
@@ -40,7 +40,7 @@ type Variable struct {
 }
 
 func NewTarget() Target {
-	return Target{Id: "", Line: -1, Condition: make([]string, 0), Vars: make(map[string]Variable, 0), Node: nil}
+	return Target{Id: "", Line: -1, Condition: make([]string, 0), Vars: make(map[string]Variable, 0)}
 }
 
 func NewVariable() Variable {
@@ -52,7 +52,7 @@ func (t Target) String() string {
 	for key := range t.Vars {
 		vars += t.Vars[key].String() + "\n"
 	}
-	return fmt.Sprintf("Id:%s Line:%d Condition:%s Vars[%s] Node:%s", t.Id, t.Line, condToString(t.Condition), vars, astutil.NodeDescription(t.Node))
+	return fmt.Sprintf("Id:%s Line:%d Condition:%s Vars[%s]", t.Id, t.Line, condToString(t.Condition), vars)
 }
 
 func (v Variable) String() string {
@@ -94,9 +94,8 @@ func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) (s
 		mergedSource = append(mergedSource, split[i])
 		if _, ok := lines[i+1]; ok {
 			//mergedSource = append(mergedSource,fmt.Sprintf("obeah.Log(`%d`)\n",i+1))
-			marker := fmt.Sprintf("%s-%d", lines[i+1].Id, lines[i+1].Line)
 			cond := condToString(lines[i+1].Condition)
-			mergedSource = append(mergedSource, "obeah.Log(\""+marker+"\",\""+cond+"\")\n")
+			mergedSource = append(mergedSource, "obeah.Log(\""+lines[i+1].Id+"\",\""+cond+"\")\n")
 			id++
 		}
 	}
@@ -120,16 +119,14 @@ func ControlFlowLines(fset *token.FileSet, file *ast.File, p *loader.Program) ma
 		//function entrance
 		case *ast.FuncDecl:
 			t := NewTarget()
-			t.Id = "TEST"
+			t.Id = fmt.Sprintf("%d",fset.Position(c.Body.Pos()).Offset)
 			t.Line = fset.Position(c.Body.Pos()).Line
-			t.Node = n
 			mapper[t.Line] = t
 			//if statement //must come before
 		case *ast.IfStmt:
 			t := NewTarget()
-			t.Id = "TEST"
+			t.Id = fmt.Sprintf("%d",fset.Position(c.Body.Pos()).Offset)
 			t.Line = fset.Position(c.Body.Pos()).Line
-			t.Node = n
 			//get parent conditions
 			con, vars := getCondition(n, file, fset, p)
 			t.Vars = vars
