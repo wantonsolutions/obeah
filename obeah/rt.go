@@ -7,25 +7,9 @@ import (
     "fmt"
 )
 
-type Node struct {
-    Hits int
-    Tar Target
-    Children map[string]*Node
-    ChildrenHits map[string]int
-}
-
-func (n *Node) String() string {
-    var children string
-    for _, c := range n.Children {
-        children += c.String() + "\n"
-    }
-    return fmt.Sprintf("Hits: %d, Target:%s, Children: %s",n.Hits,n.Tar,children)
-}
-
-func NewNode() *Node {
-    return &Node{Hits: 0, Tar: NewTarget(), Children: make(map[string]*Node,0), ChildrenHits: make(map[string]int)}
-}
-
+const (
+    BOUND = 5
+)
 
 var (
 	initalized = false
@@ -37,6 +21,75 @@ var (
     heads = make(map[string]*Node,0)
     nodes = make(map[string]*Node,0)
 )
+
+type Node struct {
+    Hits int
+    Tar Target
+    Children map[string]*Node
+    ChildrenHits map[string]int
+}
+
+func (n *Node) String() string {
+    var children string
+    for _, c := range n.Children {
+        children += c.Tar.Id + "\n"
+    }
+    return fmt.Sprintf("Hits: %d, Target:%s, Children: %s",n.Hits,n.Tar,children)
+}
+
+func NewNode() *Node {
+    return &Node{Hits: 0, Tar: NewTarget(), Children: make(map[string]*Node,0), ChildrenHits: make(map[string]int)}
+}
+
+
+
+func generatePath() []*Node {
+    min := 1.0
+    index := 0
+    ps := make([][]string,0)
+    for i := range heads {
+        ps = append(ps,dfs(heads[i],BOUND,make([]string,0))...)
+    }
+    for i := range ps {
+        s := getScore(ps[i])
+        if s < min {
+            min = s
+            index = i
+        }
+    }
+    return fetchNodes(ps[index])
+}
+
+func fetchNodes(path []string) []*Node {
+    n := make([]*Node,0)
+    for _, id := range path {
+        n = append(n,nodes[id])
+    }
+    return n
+}
+
+func getScore(p []string) float64 {
+    score := 1.0
+    for i :=0; i < len(p)-1;i++ {
+        total := 0 
+        for j := range nodes[p[i]].ChildrenHits {
+            total += nodes[p[i]].ChildrenHits[j]
+        }
+        score *= float64(nodes[p[i]].ChildrenHits[p[i+1]]) / float64(total)
+    }
+    return score
+}
+
+func dfs(n *Node, bound int, path []string) [][]string {
+    if len(n.Children) == 0 || bound == 0 {
+        return append(make([][]string,0),path)
+    }
+    paths := make([][]string,0)
+    for i := range n.Children {
+        paths = append(paths,dfs(n.Children[i],bound-1,append(path,n.Children[i].Tar.Id))...)
+    }
+    return paths
+}
 
 func processTrace(tr []Target) {
     //catch base case
@@ -107,9 +160,6 @@ func initNow() {
 		}
 	}
 
-    for k, v := range sTargets {
-        logger.Printf("target :%s key: %s\n",v.String(),k)
-    }
 	//TODO get a better estimate for the length of traces and try to
 	//read old ones in for continued testing
 	traces = make([][]Target, 1)
@@ -123,11 +173,16 @@ func Log(id string, extra ...interface{}) {
 
 //Taboo messes up your program
 func Taboo(vars ...interface{}) {
+    logger.Println("TABOO")
 	checkInit()
 	//print the last trace
 	tr := traces[len(traces)-1]
     processTrace(tr)
+    path := generatePath()
     if len(traces) % 5 == 0 {
+        for _, n := range path {
+            logger.Println(n.String())
+        }
         DrawDot(heads)
     }
 	//start a new trace
