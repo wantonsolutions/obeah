@@ -9,6 +9,7 @@ import (
 	"go/printer"
 	"go/token"
 	"golang.org/x/tools/go/ast/astutil"
+	"golang.org/x/tools/go/loader"
 	"log"
 	"strings"
 )
@@ -23,16 +24,39 @@ var (
 	logger    *log.Logger
 )
 
-type Flow struct {
+type Target struct {
 	Id        string
 	Line      int
-	Child     []*Flow
 	Condition []string
+	Vars      map[string]Variable
 	Node      ast.Node
 }
 
-func NewFlow() *Flow {
-	return &Flow{Line: -1, Child: make([]*Flow, 0), Condition: make([]string,0), Node: nil}
+type Variable struct {
+	Id    string
+	Name  string
+	Type  string
+	Value interface{}
+}
+
+func NewTarget() Target {
+	return Target{Id: "", Line: -1, Condition: make([]string, 0), Vars: make(map[string]Variable, 0), Node: nil}
+}
+
+func NewVariable() Variable {
+	return Variable{Id: "", Name: "", Type: "", Value: nil}
+}
+
+func (t Target) String() string {
+	var vars string
+	for key := range t.Vars {
+		vars += t.Vars[key].String() + "\n"
+	}
+	return fmt.Sprintf("Id:%s Line:%d Condition:%s Vars[%s] Node:%s", t.Id, t.Line, condToString(t.Condition), vars, astutil.NodeDescription(t.Node))
+}
+
+func (v Variable) String() string {
+	return fmt.Sprintf("Id: %s\tName: %s\tType: %s\tValue:%s", v.Id, v.Name, v.Type, v.Value)
 }
 
 func Insturment(options map[string]string, l *log.Logger) map[string]string {
@@ -43,11 +67,10 @@ func Insturment(options map[string]string, l *log.Logger) map[string]string {
 	if err != nil {
 		panic(err)
 	}
-
 	instrumentedOutput := make(map[string]string)
 	for pnum, pack := range p.Packages {
 		for snum, _ := range pack.Sources {
-			instSource := InstrumentSource(p.Fset, p.Packages[pnum].Sources[snum].Comments)
+			instSource := InstrumentSource(p.Fset, p.Packages[pnum].Sources[snum].Source, p.Prog)
 			p.Packages[pnum].Sources[snum].Text = instSource
 			instrumentedOutput[p.Packages[pnum].Sources[snum].Filename] = instSource
 		}
@@ -56,14 +79,14 @@ func Insturment(options map[string]string, l *log.Logger) map[string]string {
 	return instrumentedOutput
 }
 
-func InstrumentSource(fset *token.FileSet, file *ast.File) string {
-	_, lines := ControlFlowLines(fset, file)
+func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) string {
+	lines := ControlFlowLines(fset, file, p)
 	buf := new(bytes.Buffer)
 	printer.Fprint(buf, fset, file)
 	split := strings.SplitAfter(buf.String(), "\n")
 	mergedSource := make([]string, 0)
 	id := 0
-    ast.Print(fset,file)
+	//ast.Print(fset, file)
 	for i := range split {
 		mergedSource = append(mergedSource, split[i])
 		if _, ok := lines[i+1]; ok {
@@ -83,37 +106,32 @@ func InstrumentSource(fset *token.FileSet, file *ast.File) string {
 	return string(formatted)
 }
 
-func ControlFlowLines(fset *token.FileSet, file *ast.File) (*Flow, map[int]Flow) {
-	head := new(Flow)
-	mapper := make(map[int]Flow)
+func ControlFlowLines(fset *token.FileSet, file *ast.File, p *loader.Program) map[int]Target {
+	mapper := make(map[int]Target)
 	ast.Inspect(file, func(n ast.Node) bool {
 		switch c := n.(type) {
 		//function entrance
 		case *ast.FuncDecl:
-			f := NewFlow()
-			f.Id = "TEST"
-			f.Line = fset.Position(c.Body.Pos()).Line
-			f.Node = n
-			mapper[f.Line] = *f
-			head = f
+			t := NewTarget()
+			t.Id = "TEST"
+			t.Line = fset.Position(c.Body.Pos()).Line
+			t.Node = n
+			mapper[t.Line] = t
 			//if statement //must come before
 		case *ast.IfStmt:
-			f := NewFlow()
-			f.Id = "TEST"
-			f.Line = fset.Position(c.Body.Pos()).Line
-			f.Node = n
-			f.Condition = append(f.Condition,nodeToString(c.Cond))
-            //fmt.Println(f.Condition[0])
-			f.Condition = append(f.Condition,getCondition(n,file,fset)...)
-			parent, err := findParent(n, head, file, fset)
-			if err != nil {
-				panic(err)
-			}
-			parent.Child = append(parent.Child, f)
-            for _, c := range f.Condition  {
-                fmt.Println(c)
-            }
-			mapper[f.Line] = *f
+			t := NewTarget()
+			t.Id = "TEST"
+			t.Line = fset.Position(c.Body.Pos()).Line
+			t.Node = n
+			//get parent conditions
+			con, vars := getCondition(n, file, fset, p)
+			t.Vars = vars
+			t.Condition = append(t.Condition, con...)
+			//get local conditions
+			t.Condition = append(t.Condition, nodeToString(c.Cond))
+			getVarsFromCond(c.Cond, file, p, t.Vars)
+			logger.Println(t.String())
+			mapper[t.Line] = t
 			break
 		case *ast.BlockStmt:
 			//check for else
@@ -125,22 +143,48 @@ func ControlFlowLines(fset *token.FileSet, file *ast.File) (*Flow, map[int]Flow)
 		}
 		return true
 	})
-	return head, mapper
+	return mapper
 }
 
-func getCondition(n ast.Node, file *ast.File, fset *token.FileSet) []string {
+//variables is filled with the variables from the conditional
+func getVarsFromCond(c ast.Node, file *ast.File, p *loader.Program, variables map[string]Variable) {
+	defs := p.Created[0].Defs
+	ast.Inspect(c, func(n ast.Node) bool {
+		switch i := n.(type) {
+		case *ast.Ident:
+			for d := range defs {
+				if i.Obj == d.Obj { //the objects match
+					obj := defs[d]
+					v := NewVariable()
+					v.Name = obj.Name()
+					v.Id = obj.Id()
+					v.Type = obj.Type().String()
+					variables[v.Id] = v
+				}
+			}
+			break
+		default:
+			break
+		}
+		return true
+	})
+}
+
+func getCondition(n ast.Node, file *ast.File, fset *token.FileSet, p *loader.Program) ([]string, map[string]Variable) {
 	interval, _ := astutil.PathEnclosingInterval(file, n.Pos(), n.End())
-    condition := make([]string,0)
-    for i:=1; i<len(interval); i++ {
-        switch c := interval[i].(type) {
-        case *ast.IfStmt:
-            condition = append(condition,"!("+nodeToString(c.Cond)+")")
-            break
-        default:
-            break
-        }
-    }
-    return condition
+	condition := make([]string, 0)
+	variables := make(map[string]Variable, 0)
+	for i := 1; i < len(interval); i++ {
+		switch c := interval[i].(type) {
+		case *ast.IfStmt:
+			condition = append(condition, "!("+nodeToString(c.Cond)+")")
+			getVarsFromCond(c.Cond, file, p, variables)
+			break
+		default:
+			break
+		}
+	}
+	return condition, variables
 }
 
 //the returned ast.node is the parent if in this case
@@ -167,40 +211,6 @@ func isElse(n ast.Node, file *ast.File, fset *token.FileSet) bool {
 		}
 	}
 	return false
-}
-
-func findParent(n ast.Node, head *Flow, file *ast.File, fset *token.FileSet) (*Flow, error) {
-	interval, _ := astutil.PathEnclosingInterval(file, n.Pos(), n.End())
-	if len(interval) < 2 { //|| exact {
-		return nil, fmt.Errorf("Node has no parent in its ast")
-	}
-	//fmt.Println(nodeToString(interval[1]))
-	parentNode := interval[1]
-	parentFlow := findFlowByNode(head, parentNode, fset)
-	if parentFlow == nil {
-		return nil, fmt.Errorf("Could not find flow's parent")
-	}
-	return parentFlow, nil
-}
-
-//depth first search of cfg
-func findFlowByNode(f *Flow, n ast.Node, fset *token.FileSet) *Flow {
-	//basecase
-	//fmt.Printf("Flowline %d : Nodeline %d", f.Line, fset.Position(n.Pos()).Line)
-	if f.Line == fset.Position(n.Pos()).Line {
-		return f
-	}
-	if len(f.Child) == 0 {
-		return nil
-	} else {
-		for _, child := range f.Child {
-			c := findFlowByNode(child, n, fset)
-			if c != nil {
-				return c
-			}
-		}
-	}
-	return nil
 }
 
 func nodeToString(n ast.Node) string {
@@ -260,14 +270,21 @@ func getProgramWrapper() (*programslicer.ProgramWrapper, error) {
 }
 
 func condToString(cond []string) string {
-    if len(cond) <= 0 {
-        return ""
-    }
-    var ret string
-    for i:= 0;i<len(cond)-1;i++{
-        //fmt.Println(cond[i])
-        ret += cond[i] + " && "
-    }
-    ret += cond[len(cond) -1]
-    return ret
+	if len(cond) <= 0 {
+		return ""
+	}
+	var ret string
+	for i := 0; i < len(cond)-1; i++ {
+		//fmt.Println(cond[i])
+		ret += cond[i] + " && "
+	}
+	ret += cond[len(cond)-1]
+	return ret
+}
+
+//merges b into a
+func mapmerge(a, b map[string]Variable) {
+	for key := range b {
+		a[key] = b[key]
+	}
 }
