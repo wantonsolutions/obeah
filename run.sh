@@ -24,17 +24,23 @@ obeah -file=$TESTFILE -v
 #run the test program
 go run t.go
 
+#generate cfg
+dot -Tpng -o runtimeCFG.png runtimeCFG.dot
+display runtimeCFG.png
+
+
 #cleanup
 if [ ! -d $ARCHIVE ]; then
     mkdir $ARCHIVE
 fi
 
 dir="$ARCHIVE/$(date +%m-%d_%H-%M-%S)/"
-echo "moving left-overs to $dir"
-mkdir -p "$dir"
+echo "moving latest to $dir"
+mv $ARCHIVE/latest $dir
+mkdir -p $ARCHIVE/latest
 
 #archive the test file and its encoded state
-mv $TESTFILE *.enc $dir
+mv $TESTFILE *.enc *.png *.dot $ARCHIVE/latest
 #restore the testfile
 cp ./clean/$TESTFILE ./
 

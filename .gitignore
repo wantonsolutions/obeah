@@ -7,4 +7,6 @@
 *.bbl
 *.bak
 *.enc
+*.dot
+*.png
 test/log_archive

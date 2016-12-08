@@ -14,11 +14,15 @@ const (
 
 func main() {
 	logger := log.New(os.Stdout, "[obeah test]", log.Lshortfile)
+	obeah.Taboo()
 
 	for i := 0; i < RUNS; i++ {
 		a := rand.Int() % MOD
 		b := rand.Int() % MOD
 		obeah.Taboo(a, b)
+        if a == a {
+           b--
+        }
 		if a < 5 {
 			if a < b {
 				a++
