@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/gob"
 	"flag"
 	"fmt"
 	"github.com/wantonsolutions/obeah/obeah"
@@ -80,7 +81,8 @@ func main() {
 
 	if pipe != defaultPipe {
 		options["pipe"] = pipe
-		source := obeah.Insturment(options, logger)
+		//TODO write targets to file
+		source, _ := obeah.Insturment(options, logger)
 		fmt.Print(source)
 		return
 	}
@@ -97,14 +99,18 @@ func main() {
 
 		options["file"] = file
 		//get source
-		source := obeah.Insturment(options, logger)
+		source, targets := obeah.Insturment(options, logger)
+		targetFile, err := os.Create("targets.enc")
+		if err != nil {
+			logger.Fatal(err)
+		}
+		enc := gob.NewEncoder(targetFile)
+		enc.Encode(targets)
 		printSource(source[file])
-		/*
-			err = writeFile(file, source[file])
-			if err != nil {
-				log.Fatal(err)
-			}
-		*/
+		err = writeFile(file, source[file])
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// TODO remove test if the directory is valid. If so add to options, else
@@ -115,9 +121,10 @@ func main() {
 			logger.Fatalf("Invalid Directory Error: %s\n", err.Error())
 		}
 		logger.Printf("Documenting Directory :%s\n", directory)
+		//TODO write targets to file
 		options["directory"] = directory
 
-		sources := obeah.Insturment(options, logger)
+		sources, _ := obeah.Insturment(options, logger)
 		for name, source := range sources {
 			logger.Printf("%s\n%s\n", name, source)
 			/*

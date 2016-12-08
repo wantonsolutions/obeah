@@ -59,7 +59,7 @@ func (v Variable) String() string {
 	return fmt.Sprintf("Id: %s\tName: %s\tType: %s\tValue:%s", v.Id, v.Name, v.Type, v.Value)
 }
 
-func Insturment(options map[string]string, l *log.Logger) map[string]string {
+func Insturment(options map[string]string, l *log.Logger) (map[string]string, map[string]map[string]map[string]Target) {
 	logger = l
 	logger.SetPrefix("[Obeah Instrument] ")
 	initalize(options)
@@ -68,18 +68,21 @@ func Insturment(options map[string]string, l *log.Logger) map[string]string {
 		panic(err)
 	}
 	instrumentedOutput := make(map[string]string)
+	targets := make(map[string]map[string]map[string]Target, 0)
 	for pnum, pack := range p.Packages {
-		for snum, _ := range pack.Sources {
-			instSource := InstrumentSource(p.Fset, p.Packages[pnum].Sources[snum].Source, p.Prog)
+		targets[pack.PackageName] = make(map[string]map[string]Target, 0)
+		for snum, soc := range pack.Sources {
+			var instSource string
+			instSource, targets[pack.PackageName][soc.Filename] = InstrumentSource(p.Fset, p.Packages[pnum].Sources[snum].Source, p.Prog)
 			p.Packages[pnum].Sources[snum].Text = instSource
 			instrumentedOutput[p.Packages[pnum].Sources[snum].Filename] = instSource
 		}
 	}
 
-	return instrumentedOutput
+	return instrumentedOutput, targets
 }
 
-func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) string {
+func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) (string, map[string]Target) {
 	lines := ControlFlowLines(fset, file, p)
 	buf := new(bytes.Buffer)
 	printer.Fprint(buf, fset, file)
@@ -97,13 +100,17 @@ func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) st
 			id++
 		}
 	}
+	referencedTargets := make(map[string]Target, 0)
+	for _, t := range lines {
+		referencedTargets[t.Id] = t
+	}
 	instrumented := mergeSource(mergedSource)
 	//fmt.Println(instrumented)
 	formatted, err := format.Source([]byte(instrumented))
 	if err != nil {
 		panic(err)
 	}
-	return string(formatted)
+	return string(formatted), referencedTargets
 }
 
 func ControlFlowLines(fset *token.FileSet, file *ast.File, p *loader.Program) map[int]Target {

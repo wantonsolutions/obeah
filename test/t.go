@@ -1,37 +1,37 @@
 package main
 
+import (
+    "github.com/wantonsolutions/obeah/obeah"
+    "math/rand"
+    "log"
+}
+
+const (
+    RUNS = 20
+    MOD = 20
+)
+
 func main() {
-	a := 1
-	switch a {
-	case 1:
-		a++
-		break
-	case 2:
-		a--
-		break
-	case 3:
-		a = a * a
-		break
-	default:
-		a = a
-		break
-	}
-	a = 1
-	for i := 0; i < 20; i++ {
-		a += i
-	}
-	if a < 2 {
-        if a < a {
-            a++
-        } else if a > a {
-            a--
+    logger := log.New("[obeah test]",log.Lshortfile)
+
+    for i := 0; i < RUNS; i ++ {
+        a = rand.Int() % MOD
+        b = rand.Int() % MOD
+        obeah.Taboo(a,b)
+        if a < 5 {
+            if a < b {
+                a++
+            } else if a = b {
+                logger.Fatalf("CRASH!!!")
+            } else {
+                b++
+            }
+            a = 5
+        } else if a > 10 ||  b > 10 {
+            a, b = 100
         } else {
-            a = 0
+            a = 7
+            b = 10
         }
-		a = 5
-	} else if a > 6 {
-		a = 6
-	} else {
-		a = 7
-	}
+    }
 }
