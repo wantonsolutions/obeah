@@ -1,0 +1,129 @@
+\section{Instrumentation}
+\label{sec:instrumentation}
+
+
+
+Different flavors of testing exist for distributed systems; Typically the
+tradeoff is between using either whitebox or blackbox methodologies. Black box
+testing has the advantage of requiring no prior knowledge of the system, which
+leads to more genral techniques. The tradeoff is that important information
+about the system cannot be leveraged, thus blackbox methods test less
+exaustively. In contrast whitebox methods use system specific information to
+perform tests. Whitebox testing can perform more exaustive analysis and detect
+deeper bugs, at the cost of generality and developer effort. 
+
+Our goal is to use light weight whitebox techniques to perform system specific
+testing, without incurring significant overhead, or requiring developer effort.
+This section details our automatic insturmentation proceduring for learing a
+programs control constraints, and injecting logging code for tracing a program
+during runtime.
+
+\subsection{Logging Points}
+
+In order to profile the exection of a program at runtime we must log it's
+control flow. Control flow can be profiled by logging a unique identifier after
+each branch in a program. Obeah takes a program as input and analyzes it's AST.
+At each brancing conditional, such as an if-else or switch statemet, code is
+injected which logs which particular branch was executed. We use the position
+of the conditional in the program as a unique identifier in the log statement.
+Figure~\ref{insturmentation} shows the source code of a program before and
+after instrumentation.
+
+\subsection{Aggregating Conditionals}
+
+Symbolic execution is useful for determining which variable values will lead to
+a pariticular set of conditionals being executed. Unfortunatly symbolic
+execution is expensive, and is infeasable to run on large systems while they
+execute. We choose to only reason about the conditionals themselves to
+mittigate the cost of symbolic execution. Each brach in a program has a set of
+conditionals which must be satisfied in order for the brach to be taken.
+Further, many conditionals are nested and require that many other branches are
+not taken in order for them to be executed. Using static analysis on the AST of
+a program we assign a set of conditional predicates to each branch of a
+program. Collecting conditional predicates for a brach is done by backtracking
+to a functions root from the branch statement. All conditionals which must be
+satisfied for the branch to be executed are added to the collection. In
+contrast all conditionals which must not be statisfied are negated and added to
+the collection. For example in Listing~\ref{post-instrumentation} if the else
+branch in the \emph{DoWork} case is to be executed two conditions must be
+satisfied. \emph{msg.Size <= 100} and \emph{msg.Type == DoWork}. In this case
+the collection of conditionals attached to log point \emph{4} would be
+\emph{!(msg.Size > 100)} $\wedge$ \emph{msg.Type == DoWork}. Post
+insturmentation all braches have an associated collection of constraints
+associated with them. This information is persisted post instrumentation and
+used during runtime to form larger constraints corresponding to paths through a
+program.
+
+\subsection{Variable Manipulation}
+
+In order to influence a programs execution some of the variabes in a program
+must be under the control of the tester. Our goal is to inject byzantine faults
+which cause unlikely or unseen paths to be executed; As such we use the set of
+variable set directly from receved messages as our controlable variables.
+Currently variables which are set directly from an inbound message must be
+specified by the devloper. These variable could be determined statically
+through program sliceing, but that functionality is beyond the scope of this
+project. The last point of instrumenation is the addition of
+\emph{obeah.Taboo()} function calls. The \emph{Taboo} function takes pointers
+to variables as arguemnts, along with identifiers for those variables.
+\emph{Taboo} manipulates the values of variables passed in, so that particular
+paths through the program will be likely be executed. We suggest that
+\emph{Taboo} should be the first call made after a message is unmarshalled so
+that variable manipuations will result in the same execution, as if a byzantine
+message was received. The internals of \emph{Taboo} are discussed in
+Section~\ref{execution-pertubation}.
+
+
+\begin{lstlisting}
+int main()
+{
+    msg := net.Read(buffer)
+    
+    switch msg.Type {
+    case PING:
+        net.Write("IIA")
+    case DoWork:
+        if msg.Size > 100 {
+            spreadWorkAround(msg)
+        } else {
+            doTheWork()
+        }
+    }
+}
+\lable{pre-insturmeted}
+\caption{source code of a simple program pre insturmentation}
+\end{lstlisting}
+
+\begin{lstlisting}
+int main()
+{
+    msg := net.Read(buffer)
+    obeah.Taboo(*msg)
+    switch msg.Type {
+    case PING:
+        obeah.Log("1")
+        net.Write("IIA")
+    case DoWork:
+        obeah.Log("2")
+        if msg.Size > 100 {
+            obeah.Log("3")
+            spreadWorkAround(msg)
+        } else {
+            obeah.Log("4")
+            doTheWork()
+        }
+    }
+}
+\lable{post-insturmeted}
+\caption{source code of a simple program post insturmentation}
+\end{lstlisting}
+
+
+\begin{itemize}
+    \item \textbf{Why instrument white vs blackbox}
+    \item \textbf{what are we getting from instrumenting}
+    \item \textbf{what tools are we using to instrument}
+    \item \textbf{what is the scope of insturmentation}
+    \item \textbf{what challenges are there in insturmenting}
+    \item \textbf{what is the cost of instruementing}
+\end{itemize}

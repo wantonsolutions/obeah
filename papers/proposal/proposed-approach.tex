@@ -1,0 +1,47 @@
+\section{Proposed Approach}
+\label{sec:proposed-approach}
+
+Our proposed tool consists of three components. First an
+instrumentation and profiling tool which automatically adds control
+flow logging statements into the source of a program. Second a tool
+for generating unlikely control flow paths from the control flow path
+profile. Third a symbolic execution engine which can augment network
+payloads in order to force the program down the desired control flow
+path.  \\
+%
+\noindent\textbf{Control Flow Profiling:} A control flow profile of a
+program is the list of branches taken during its execution. Our goal
+is to compile a profile of the control flow executed from the point
+that messages are received in a distributed system. Using the AST of a
+program all branching statements can be enumerated. We propose to
+instrument source code by traversing a programs AST and injecting a
+function to log a unique symbol at each branching statement. The
+logging statements will append the unique symbols together as each
+branch is executed composing a word of symbols. The end of each work
+is signalled by messages being received.  \\
+%
+\noindent\textbf{Generating Unlikely Paths:} After a sufficient amount
+of execution time the collection of words will profile typical control
+flow of the system. To generate unlikely control flow paths we will
+generate words which are unlike the one observed in the profile. Doing
+so will be the job of a compression algorithm and an SMT solver.
+Compressing the words will generate small encodings for common paths,
+and long encodings for uncommon paths. We will then query the SMT
+solver for a word which results in a long encoding.  \\
+%
+\noindent\textbf{Symbolic Execution:} Our approach requires symbolic
+execution to determine which modifications to network payloads will
+result in the execution of an unlikely control flow path. To begin
+with we will manually construct a symbolic representation of a
+distributed program. Manual symbolic execution will allow us to test
+the feasibility of our approach and determine if paths can be
+determined in a reasonable amount of time. We will use
+Z3~\cite{4144534} as our symbolic execution engine. If our initial
+approach is feasible we will extend symbolic execution by leveraging
+several off the shelf solutions. To our knowledge no symbolic
+execution engines exist for Go. KLEE is a symbolic execution engine
+designed for C and C++~\cite{Cadar_klee:unassisted}. Our plan is to
+transpile Go into C++ using the Tardis Go transpiler~\cite{tardisgo},
+and execute the C++ translation with KLEE.
+
+

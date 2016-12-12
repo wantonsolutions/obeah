@@ -1,0 +1,90 @@
+\section{Execution}
+\label{exection}
+
+Our goal with Obeah is to manufacture byzantine faults during the execution of
+a distributed system. To do so obeah permutes variabes set by recevied message
+to execute low probability, and unexecuted paths through a program. In
+Section~\ref{instrumentation} we discussed how obeah collectes control flow
+constraints from a programs source code, and insturments the source code to log
+its control flow. In this section we discribe how a programs execution is
+profiled, how low probability paths are calulated, and the process by which
+variables have their values perterbed.  Each insturmented node will exibit
+byzantine behaviour during it's execution. We leave it to system developers to
+decide what degree of fault tolerance they wish to achive. By running more
+insturmented nodes during a test, the number of faults injected will increase.
+For the purposes of discussion in this section, we will assume that an
+executing system contians a single insturmented node, with the rest running
+their original sources.
+
+\subsection{Runtime Inputs, and Initalization}
+
+During execution Obeah moniters execution and tabulates the control flow being
+executed. Without any knowledge of the program being executed it would be
+imposible to reason about which variables caused which paths to be executed,
+and how to modify them to reach unusal states. As such, Obeah takes the control
+flow data extracted during instrumentation as a runtime argument. One design
+goal of obeah was to reduce developer effort in using the tool. Obeah does not
+require that developers modify their code to take in control flow data as an
+argument. Insted, each of obeah's logging functions, such as \emph{Log} and
+\emph{Taboo} check if obeah has been initalized when they are executed. Upon
+initalization control flow data is read in from disk, using a pre-determined
+name, from the processes local directory. Once initalized obeah will begin
+profiling the system.
+
+\subsection{Profiling}
+
+Profiling an executing system is done by maintaining a runtime control flow
+graph, and counting the number of times that one branch is taken after another.
+The control flow graph is initalized as a set of unconnected points, each of
+which is a conditional statement. A trace of conditionals executed is
+maintained in the background. A new trace is started each time \emph{Taboo} is
+executed. Executions of \emph{Taboo} are paired with received messages.
+Therefore starting a trace from each \emph{Taboo} exeuction profiles how the
+system behaves after a message is received. Each time an \emph{Log} function is
+executed, the unique identifier of a conditional is appended to the trace. When
+\emph{Taboo} is executed the current trace is processed, and a new one is
+begun. Each trace has a head, which is a potental starting point on which to
+compute a path. It is worthwile to note that if the first conditional
+encountered after receiving a message was a large switch statement, a common
+occurance in distributed systems, the number of path heads could be large. A
+trace is processed by first adding any new heads to the control flow graph.
+Second the trace is itterated over. The control flow graph is updated based on
+the order of conditionals in the trace. Edges are added to the control flow
+graph when two conditionals which had not been executed sequentially are
+encountered in the trace. If an edge in the CFG existed then a count on the
+edge is incremented. Over time the CFG will mature and obeah can calculate low
+probability paths with high confidence.
+
+\subsection{Finding Unlikely Paths}
+
+Once a profile of a system has reach sufficient maturity, during our tests we
+used a standard of 50 traces, Obeah will generate an unlikey path. To do so a
+bounded bredth first search (BBFS) is performed on the CFG. All paths of a
+specified depth $n$ are generated. The aproximate probabilty of executing any
+given path is calculted by multiplying the probabilities of each branch in the
+path being taken. Post calculation the path with the lowest probability is
+chosen to be the next path obeah will aim to execute. We note her that the
+lowest likelyhood path may not be feasable in the program. During path
+calculation no attempt is made to reason about the paths semantics. Next we
+discuss how low probability paths are reasoned about, and how variables are
+perterbed to aim for that paths execution.
+
+\subsection{Pertubation}
+\label{runtime-pertubation}
+
+Once a low likeyhood path has been chosen, Obeah attempts to determine a
+variable assignment which will cause the path to be executed. Obeah uses the Z3
+constraint solver to reason about path constraints. An unlikely path is
+formulated as the set of conditionals which need to be satisfied in order to
+execute the path. Within each conditional also has a set of variables
+associated with it. Obeah generates a program using Z3's python interface which
+attempts to solve the path constraint. If the formula is unsat, then obeah
+considers the path infeaseable. Unsat path constrains may well be executable
+paths due to the internal logic of the program. But in order to remain light
+weight, we do not attempt to reason about such cases. Insted the path is black
+listed to prevent computation on it in the future. If a satisfying assignment
+is found for the path constraints the satisfying varible values are set in the
+running program.
+
+
+

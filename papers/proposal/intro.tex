@@ -1,0 +1,27 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction and Motivation}
+\label{sec:intro}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Developing correct distributed systems is difficult. Conventional
+testing techniques, such as unit testing, fall short of realizing
+distributed complexity. Developers often rely on brute force methods
+for testing their systems end to end. Brute force testing is useful
+for checking typical executions, but it fails to cover the full space
+of non-deterministically introduced edge cases. To artificially test for
+non-deterministic bugs, developers can fuzz test their systems.
+Unfortunately fuzz testing is unguided, leading to the majority of
+randomly generated inputs being handled by a small subset of error
+handling code. A more robust version of fuzz testing would be to
+generate inputs which forced a system to execute a previously untested
+control path. Here we propose a tool for SMT guided fuzz testing for
+distributed systems. The tool will profile a systems execution and
+generate unlikely control flow paths. Upon receiving messages the tool
+will augment the incoming network payload to cause the unlikely
+control path to be taken. In the result of a failure the tool will
+output the sequence of intended control flow paths, and modifications
+to payloads. These output can help developers reason about the induced
+error state and defend against it.
+
+
+
