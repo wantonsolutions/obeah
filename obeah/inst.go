@@ -206,11 +206,31 @@ func ControlFlowLines(fset *token.FileSet, file *ast.File, p *loader.Program) ma
 			break
 		case *ast.BlockStmt:
 			//check for else
-
-			if ok := isElse(n, file, fset); ok {
-				print()
+			if ok := isElse(n, file, fset); !ok {
+                break
 			}
+            //the node is an else
+            t := NewTarget()
+            t.Id = fmt.Sprintf("%d",fset.Position(c.Lbrace).Offset)
+            t.Line = fset.Position(c.Lbrace).Line
+            //get parent conditions
+            con, vars := getCondition(n, brackets ,file, fset, p)
+            t.Vars = vars
+            t.Condition = append(t.Condition, con...)			
+			mapper[t.Line] = t
 			break
+        case *ast.CaseClause:
+			t := NewTarget()
+			t.Id = fmt.Sprintf("%d",fset.Position(c.Case).Offset)
+			t.Line = fset.Position(c.Case).Line
+			//get parent conditions
+			con, vars := getCondition(n, brackets ,file, fset, p)
+			t.Vars = vars
+			t.Condition = append(t.Condition, con...)
+            //getVarsFromCase(c, file, p, t.Vars)
+			logger.Println(t.String())
+			mapper[t.Line] = t
+
 		}
 		return true
 	})
@@ -241,6 +261,19 @@ func getVarsFromCond(c ast.Node, file *ast.File, p *loader.Program, variables ma
 	})
 }
 
+func getCase(c *ast.CaseClause) string {
+    if len(c.List) <= 0 {
+        return ""
+    }
+    var condition string
+    i := 0
+    for ;i<len(c.List)-1;i++ {
+        condition += fmt.Sprintf("(%s) && ",nodeToString(c.List[i]))
+    }
+    condition+= fmt.Sprintf("(%s)",nodeToString(c.List[len(c.List)-1]))
+    return condition
+}
+
 func getCondition(n ast.Node, b Brackets,file *ast.File, fset *token.FileSet, p *loader.Program) ([]string, map[string]Variable) {
 	interval, _ := astutil.PathEnclosingInterval(file, n.Pos(), n.End())
 	condition := make([]string, 0)
@@ -256,6 +289,42 @@ func getCondition(n ast.Node, b Brackets,file *ast.File, fset *token.FileSet, p 
             }
 			getVarsFromCond(c.Cond, file, p, variables)
 			break
+		case *ast.ForStmt:
+			condition = append(condition, "("+nodeToString(c.Cond)+")")
+			getVarsFromCond(c.Cond, file, p, variables)
+			break
+        case *ast.SwitchStmt:
+            if len(c.Body.List) <= 0 {
+                break
+            }
+            tag := nodeToString(c.Tag)
+            for _, stmt := range c.Body.List{
+                switch oc := stmt.(type) {
+                case *ast.CaseClause:
+                    //the case statement is a parent
+                    if oc.Pos() < n.Pos() && oc.End() < n.Pos() {
+                        condition = append(condition,"!("+tag+"=="+getCase(oc)+")")
+                    } else if oc.Pos() <= n.Pos() && oc.End() >= n.Pos() {
+                        //default case
+                        if getCase(oc) == "" {
+                            break
+                        }
+                        condition = append(condition,"("+tag+"=="+getCase(oc)+")")
+                    } else {
+                        //its below
+                        break
+                    }
+                    for _, e := range oc.List {
+                        getVarsFromCond(e,file,p, variables)
+                    }
+                    break
+                default :
+                    //this should never be reached
+                    break
+                }
+            }
+            break
+             
 		default:
 			break
 		}
@@ -288,6 +357,7 @@ func isElse(n ast.Node, file *ast.File, fset *token.FileSet) bool {
 	}
 	return false
 }
+
 
 func nodeToString(n ast.Node) string {
 	fset := token.NewFileSet()

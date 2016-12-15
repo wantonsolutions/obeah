@@ -1,5 +1,6 @@
 ROOTCERF=~/go/src/github.com/wantonsolutions/obeah
 ROOTPON=~/pro/go/src/github.com/wantonsolutions/obeah
+RUN=true
 
 if [ ! -d $ROOTCERF ]; then
     ROOT=$ROOTPON
@@ -11,8 +12,8 @@ fi
 
 
 ARCHIVE=$ROOT/test/log_archive
-# options [t.go , t2.go]
-TESTFILE=t2.go
+# options [t.go , t2.go, t3.go, t4.go]
+TESTFILE=t4.go
 
 #install obeah
 cd $ROOT
@@ -22,6 +23,7 @@ go install
 cd test
 cp clean/$TESTFILE test.go
 obeah -file=test.go -v
+
 
 #run the test program
 go run test.go
