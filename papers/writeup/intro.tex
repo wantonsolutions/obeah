@@ -1,27 +1,102 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Introduction and Motivation}
+\section{Intro}
 \label{sec:intro}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Developing correct distributed systems is difficult. Conventional
-testing techniques, such as unit testing, fall short of realizing
-distributed complexity. Developers often rely on brute force methods
-for testing their systems end to end. Brute force testing is useful
-for checking typical executions, but it fails to cover the full space
-of non-deterministically introduced edge cases. To artificially test for
-non-deterministic bugs, developers can fuzz test their systems.
-Unfortunately fuzz testing is unguided, leading to the majority of
-randomly generated inputs being handled by a small subset of error
-handling code. A more robust version of fuzz testing would be to
-generate inputs which forced a system to execute a previously untested
-control path. Here we propose a tool for SMT guided fuzz testing for
-distributed systems. The tool will profile a systems execution and
-generate unlikely control flow paths. Upon receiving messages the tool
-will augment the incoming network payload to cause the unlikely
-control path to be taken. In the result of a failure the tool will
-output the sequence of intended control flow paths, and modifications
-to payloads. These output can help developers reason about the induced
-error state and defend against it.
+The design and development of distributed systems is difficult and error prone.
+Distributed systems are naturally concurrent, and suffer from network partions,
+partial failures and message reordering. Developers must reason about all such
+corner cases when developing systems and protols. To aid in the development
+process specification languages such as TLA+~\cite{} and Coq~\cite{} have
+proven useful for desining verifiable protocols. Unfortunatly ensuring that an
+implemenation does not diverge from it's verified specification is an unsolved
+problem. The root of the problem is that real distributed systems are hard to
+test. They must correctly handle all combiations of nondetermanistic
+communication, and local timeouts for all nodes in their systems. Reasoning
+about such an exponential space of possibilties is difficult enough on concise
+specifications. In the current sate of verification, medium sequential programs
+can be verified for correctness, but the techniques simply do not scale to real
+distributed systems. This leads developers to use conventional techniques to
+test their systems. Typically a distributed system test suit contains unit test
+for individual components, integeration tests for checking the correctness of
+sepearte components. And stress tests, which involve placing the system under
+load, and injecting failures. Of these tests unit, and integration, can
+typically be made to easily pass under all condtions. Stress tests on the other
+hand can run for long periods of time before bugs finally manifest themselves.
+These failures require the labourious manual inspection of large concurrently
+generated logs in order to determine the sequence of events which triggered the
+bug. For these reasons developers require tools for generating such bugs
+quickly in smaller enviornments. The existing paradimes for generating these
+types of conditions fall into two catagories with some interesting projects in
+the middle. On one hand is fuzz testing. Fuzz testers generate randomized input
+to cause a program to execute manny possible paths. Fuzz testing is either
+blackbox or whitebox. Blackbox fuzz testing for distribued systems is similar
+to stress testing with the advantage that the input which caused the system to
+fail can be more readily recovered. Whitebox fuzz testing moniters aspects of a
+program such as control flow paths taken, and generates new inputs to try and
+reach untested paths, a cutting edge example is AFL ~\cite{}. On the other end
+of the spectrum are some interesting attempts at verification. Projects such as
+Modist ~\cite{} are black box distirbuted verification tools. Modist compiles
+along with the source code of a program and captures all timer and networking
+calls to the operating system. Modist then injects failures into the messaging
+and nondeterministically fires timers. Modist enumerates through all
+interleavings of message failures, and nondeterministic timers to generate
+faults. This process is slow, and has tight ties to bounded model checking
+where at any $n+1$ non-deterministic event an unsafe state may be reached.
+Whitebox verificaion methods have also been developed recently. P\# is a
+verification language which has demonstrated its efficacy by being integrated
+with systems written in C\#~\cite{}. P\# allows users to write executable
+specifications of their systems, and harnesses, similar to thoes used by
+SLAM~\cite{}. Users than test one component of their real system against the
+simplified specificication. Behind the scenens P\# verification engine
+enumerates the space of message interleavings and non-deterministic failures in
+order to cause the system to violate either safty or liveness conditions. The
+downside to P\# is that developers must maintain large ammounts of extra source
+code, in the form of specifications in order to use P\#'s verification tool. In
+the center of the spectrum are mixutures of verification and fuzz testing.
+Digger is a tool for mixing symbolic exeuction and white box fuzz testing.
+Digger uses AFL to fuzz test programs. When AFL is unable to explore new
+control flow paths, as is common which paths which have a low probability of
+being executed randomly are present, digger uses symbolic exeuction to
+determine what values will open up new control flow compartments. The values
+are then fed back into AFL, and the fuzz tester can continue to execute on new
+control flow paths. Digger has demonstrated it's utility, but it is tailiored
+for sequential programs which perform large ammounts of file IO.
 
+Here we propose obeah; a tool which uses smt guided fuzz testing on distributed
+systems. Conceptually obeah is similar to digger, but the constrains of
+distributed systems demand a differnt approach than conventional fuzz testing.
+Obeah operates in two steps. First the source code of a system is insturmented
+to report control flow, and mine control flow information used at runtime.
+Second the system is tested under normal operating conditions with a subset of
+the nodes in the system running instrumented code. During execution the system
+is profiled. The profile consists of a weighted control flow graph. Once a
+sufficent confidence measure on the probability of control flow paths has been
+established obeah attempts to execute an unprobable control flow path. To
+determine an unprobable path a bounded bredth first search is performed on the
+runtime CFG, and the lowest probability path is selected as a candiate. During
+insturmentation each branching statement is annotated with the set of
+conditions which must be satisified for its execution to occur. These
+conditionals include all parent conditionals within their local functions.
+Obeah passes the set of constraints for the path to the Z3 constraint solver
+which determines if the constraints are either unsat, or a set of variable
+values which satisfy the constraint. If a satisfing assignment is found obeah
+sets the values of variables which are set by incomming messages to the values
+determined by the constraint solver. This is processes is the same as receiving
+a byzantine message. The values of the modified variables are recorded and the
+system is allowed to progress. In the case where a failure occurs, the set of
+variables altered by obeah are reported to the developer. A specific
+contribution of obeah it's lack of symbolic execution. Adding latency to a
+distributed system can cause timers to exeucte when they would not have
+normally. Obeah forgoes the formallity of using symbolic exeuction for the sake
+of speed, and at the loss of perecision. However, it's techniques are often
+enough to drive systems into failure states.
+
+%eval
+
+The rest of the paper as follows Section~\ref{sec:instrumentation} details
+obeahs insturmentation, and constraint learning process.
+Section~\ref{sec:execution} covers obeahs runtime enviornment, profiling, and
+constriant generation. Section~\ref{sec:future} examines future work.
 
 
