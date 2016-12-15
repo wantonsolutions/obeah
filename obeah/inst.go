@@ -24,6 +24,8 @@ var (
 	logger    *log.Logger
 )
 
+//Target is a structure for holding control flow information about a given conditional
+//The name Target is meant to imply that these will be amied for at runtime.
 type Target struct {
 	Id        string
 	Line      int
@@ -39,6 +41,48 @@ type Variable struct {
 	Value interface{}
 }
 
+type Brackets struct {
+    L, R []token.Pos
+}
+
+func NewBrackets() Brackets {
+    return Brackets{L: make([]token.Pos,0), R: make([]token.Pos,0)}
+}
+
+func (b Brackets) String() string{
+    var bs string
+    bs = "{ -> ["
+    for _, l := range b.L {
+        bs += fmt.Sprintf("%d,",l)
+    }
+    bs += "],\t } -> ["
+    for _, r := range b.R {
+        bs += fmt.Sprintf("%d,",r)
+    }
+    bs += "]"
+    return bs
+}
+    
+
+func (b Brackets) depth (pos token.Pos) int {
+    d := 0
+    for _, lb := range b.L {
+        if lb < pos {
+            d++
+        }
+    }
+    for _, rb := range b.R {
+        if rb < pos {
+            d--
+        }
+    }
+    return d
+}
+
+
+
+
+
 func NewTarget() Target {
 	return Target{Id: "", Line: -1, Condition: make([]string, 0), Vars: make(map[string]Variable, 0)}
 }
@@ -46,6 +90,7 @@ func NewTarget() Target {
 func NewVariable() Variable {
 	return Variable{Id: "", Name: "", Type: "", Value: nil}
 }
+
 
 func (t Target) String() string {
 	var vars string
@@ -112,8 +157,30 @@ func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) (s
 	return string(formatted), referencedTargets
 }
 
+func getBrackets(fset *token.FileSet, file *ast.File) Brackets {
+    b := NewBrackets()
+	ast.Inspect(file, func(n ast.Node) bool {
+        switch s := n.(type) {
+        case *ast.BlockStmt:
+            b.L = append(b.L,s.Lbrace)
+            b.R = append(b.R,s.Rbrace)
+            break
+        case *ast.CompositeLit:
+            b.L = append(b.L,s.Lbrace)
+            b.R = append(b.R,s.Rbrace)
+            break
+        default:
+            return true
+        }
+        return true
+        })
+    return b
+}
+
 func ControlFlowLines(fset *token.FileSet, file *ast.File, p *loader.Program) map[int]Target {
 	mapper := make(map[int]Target)
+    brackets := getBrackets(fset,file)
+    logger.Println(brackets.String())
 	ast.Inspect(file, func(n ast.Node) bool {
 		switch c := n.(type) {
 		//function entrance
@@ -128,7 +195,7 @@ func ControlFlowLines(fset *token.FileSet, file *ast.File, p *loader.Program) ma
 			t.Id = fmt.Sprintf("%d",fset.Position(c.Body.Pos()).Offset)
 			t.Line = fset.Position(c.Body.Pos()).Line
 			//get parent conditions
-			con, vars := getCondition(n, file, fset, p)
+			con, vars := getCondition(n, brackets ,file, fset, p)
 			t.Vars = vars
 			t.Condition = append(t.Condition, con...)
 			//get local conditions
@@ -174,14 +241,19 @@ func getVarsFromCond(c ast.Node, file *ast.File, p *loader.Program, variables ma
 	})
 }
 
-func getCondition(n ast.Node, file *ast.File, fset *token.FileSet, p *loader.Program) ([]string, map[string]Variable) {
+func getCondition(n ast.Node, b Brackets,file *ast.File, fset *token.FileSet, p *loader.Program) ([]string, map[string]Variable) {
 	interval, _ := astutil.PathEnclosingInterval(file, n.Pos(), n.End())
 	condition := make([]string, 0)
 	variables := make(map[string]Variable, 0)
 	for i := 1; i < len(interval); i++ {
 		switch c := interval[i].(type) {
 		case *ast.IfStmt:
-			condition = append(condition, "!("+nodeToString(c.Cond)+")")
+            //if they are on the same level negate
+            if b.depth(n.Pos()) == b.depth(c.Pos()) {
+			    condition = append(condition, "!("+nodeToString(c.Cond)+")")
+            } else {
+			    condition = append(condition, "("+nodeToString(c.Cond)+")")
+            }
 			getVarsFromCond(c.Cond, file, p, variables)
 			break
 		default:
