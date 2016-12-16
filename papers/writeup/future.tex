@@ -30,24 +30,24 @@ anonymous functions}
 
 \subsection{Learning and retrying over multiple executions}
 
-One limitation of obeah is that it requires a setup time to generate faults. The
-faults are unpredictable in that the paths which are executed are subject to
-the same non-determanisim as the distributed system itself. This leads to the
-problem of replicability. In order to determine precisely the cause of
+One limitation of obeah is that it requires a setup time to generate faults.
+The faults are unpredictable in that the paths which are executed are subject
+to the same non-determinism as the distributed system itself. This leads to
+the problem of replicability. In order to determine precisely the cause of
 failures it would be useful to recreate failures over multiple runs, and gains
 statistical confidence in the root of the failure. A possible extension for
 obeah would be to write out an entire history of an execution which lead to a
 failure and attempt to recreate it minimally over subsequent executions.
-Similar work to this has been done in Demi~\cite{} Demi uses delta debugging to
-minimize the set messages needed to re create a failure in a distributed
-system. Obeah's contribution to this work would be the means to generate the
-fault in the first place.
+Similar work to this has been done in Demi~\cite{194938} Demi uses delta
+debugging~\cite{STVR:STVR1574} to minimize the set messages needed to re create
+a failure in a distributed system. Obeah's contribution to this work would be
+the means to generate the fault in the first place.
 
 \subsection{Monitoring entire clusters}
 
 Obeah currently only monitors instrumented nodes. This has the unfortunate side
 effect that the actions of other nodes in the system are unobservable.
-Non-determanism among other nodes may lead to failures that obeah did not
+Non-determinism among other nodes may lead to failures that obeah did not
 incite. False positive are a headache in verification so facilities to minimize
 them would increase the usefulness of the tool. Fully instrumenting a cluster,
 and interleaving controlled failures on all nodes would allow obeah to recreate
@@ -64,7 +64,7 @@ nodes were instrumented, a control flow graph would exist for all nodes. Using
 additional logging information such a vector clocks, sending and receiving
 control flow paths could be linked. Using anonymous functions repressed on other
 nodes the payload of a message could be tailor to cause a failure which
-resulted from one or more passed messages in the future. This approach would
+resulted from one or more passed messages in the future. This could
 lead to a refined approach for finding protocol specific bugs. Current
 distributed verification techniques attempt to interleave all random
 non-deterministic events, which makes no attempts to reason about tested
