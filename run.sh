@@ -13,7 +13,7 @@ fi
 
 ARCHIVE=$ROOT/test/log_archive
 # options [t.go , t2.go, t3.go, t4.go]
-TESTFILE=t4.go
+TESTFILE=t2.go
 
 #install obeah
 cd $ROOT
