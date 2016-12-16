@@ -79,10 +79,6 @@ func (b Brackets) depth (pos token.Pos) int {
     return d
 }
 
-
-
-
-
 func NewTarget() Target {
 	return Target{Id: "", Line: -1, Condition: make([]string, 0), Vars: make(map[string]Variable, 0)}
 }
@@ -100,9 +96,29 @@ func (t Target) String() string {
 	return fmt.Sprintf("Id:%s Line:%d Condition:%s Vars[%s]", t.Id, t.Line, condToString(t.Condition), vars)
 }
 
+func (t Target) LogVariableString() string {
+    if len(t.Vars) <= 0 {
+        return "\"\","
+    }
+    var ids, pointers string
+    for _, v := range t.Vars {
+        ids += v.Id + ","
+        //TODO make a better solution for dealing with constants
+        if v.Type == "untyped int" {
+            v.Type = "const"
+            pointers += v.Name+","
+        } else {
+            //its a variable so pass a pointer
+            pointers += "&"+v.Name+","
+        }
+    }
+    return fmt.Sprintf("\"%s\",%s",ids[0:len(ids)-1],pointers[0:len(pointers)-1])
+}
+
 func (v Variable) String() string {
 	return fmt.Sprintf("Id: %s\tName: %s\tType: %s\tValue:%s", v.Id, v.Name, v.Type, v.Value)
 }
+
 
 func Insturment(options map[string]string, l *log.Logger) (map[string]string, map[string]map[string]map[string]Target) {
 	logger = l
@@ -139,8 +155,8 @@ func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) (s
 		mergedSource = append(mergedSource, split[i])
 		if _, ok := lines[i+1]; ok {
 			//mergedSource = append(mergedSource,fmt.Sprintf("obeah.Log(`%d`)\n",i+1))
-			cond := condToString(lines[i+1].Condition)
-			mergedSource = append(mergedSource, "obeah.Log(\""+lines[i+1].Id+"\",\""+cond+"\")\n")
+			//cond := condToString(lines[i+1].Condition)
+			mergedSource = append(mergedSource, "obeah.Log(\""+lines[i+1].Id+"\","+lines[i+1].LogVariableString()+")\n")
 			id++
 		}
 	}
@@ -152,6 +168,7 @@ func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) (s
 	//fmt.Println(instrumented)
 	formatted, err := format.Source([]byte(instrumented))
 	if err != nil {
+        logger.Println(instrumented)
 		panic(err)
 	}
 	return string(formatted), referencedTargets
