@@ -2,3 +2,55 @@
 \section{Model}
 \label{sec:model}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+In Lamports original paper on the byzantine generals problem a two algorithms
+were proposed, along with imposibility results for reaching
+concencuss~\cite{Lamport:1982:BGP:357172.357176}. Their theroms proved that
+Concencus among generals is impossible, under the condition that generals can
+forge messages, if more than one third of the generals is byzantine. Further,
+they demonstrate that if messages are sealed with an unforgable signature,
+byzantine falut tolerance can be achieved with $n-1$ byzantine generals. Here
+we define our model of a distributed system and describe three granularities of
+byzantine fault tolerance. Each granularitiy is paried with a corresponding
+configuration with which use Obeah, and systems which have acheived the
+corresponding tolerance.
+
+\subsection{Byzantine Distributed System Model}
+
+We define a distributed system to be composed of $N$ nodes where $N = \{n_1,
+n_2, \dots, n_n$\}. Each node can communicate with other nodes on any number of
+channels $C$ where $C = \{c_1, c_2, \dots, c_m\}$. Any node may fail, or resume
+exeuction at any time. Channels may drop, reorder, and manipulate messages. We
+define the set $B$ where $B \subset N$ to be the number of byzantine nodes in a
+system. Byzantine nodes can behave arbetrarility, and antagonisticly, with the
+possiblity to callude with other byzantine nodes in the system.
+
+Nodes insturmented by Obeah are Byzantine to the rest of the nodes in the
+system. From the perspecive of a node insturmented with Obeah all other nodes,
+and all channles in the system are byzantine.
+
+
+\subsection{Single Byzantine Node}
+
+Many distributed systems dismiss the need to protect againts byzantine fault
+tolerance. Any admission of byzantine tolerance requires a formalization of the
+degree of fault tolerance thier system can adhere to. However, all distributed
+systems must account for non-determinism in the network, messages can be
+reordered or dropped, and correct systems must survive them. Protecting againts
+a single byzantine node, is similar to protecting against the network, as it
+can generate arbetrary messages, and fail to respond, mimicing a partition.
+
+This level of fault tolerance requires a single node in a system, where $N > 3$ to be instrumented with Obeah. Figure~\ref{} visualizes this configuration. We propose that any implementation of fault tolerant concecus such as Paxos~\cite{}, Raft~\cite{} or 3PC must handel these failures.
+
+\subsection{$N/3 -1$}
+
+Lamports proposed an algorithm for solving the byzantine generals propblem in
+which $N/3-1$ generals are byzantine. In short the algorithm states that for
+any propositions by a general, if all other generals confer with one another on
+the proposition they received, concencus among non-byzantine generals can be
+reached.
+
+In order to simulate such a scenerio $N/3 - 1$ instance of insturmented Obeah
+nodes must be run together in a cluster. File systems such as NFS have achived this level of fault tolerance with minimal overhead.
+
+\subsection{$N-1$}
