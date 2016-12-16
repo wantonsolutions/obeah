@@ -40,7 +40,10 @@ reordered or dropped, and correct systems must survive them. Protecting againts
 a single byzantine node, is similar to protecting against the network, as it
 can generate arbetrary messages, and fail to respond, mimicing a partition.
 
-This level of fault tolerance requires a single node in a system, where $N > 3$ to be instrumented with Obeah. Figure~\ref{} visualizes this configuration. We propose that any implementation of fault tolerant concecus such as Paxos~\cite{}, Raft~\cite{} or 3PC must handel these failures.
+This level of fault tolerance requires a single node in a system, where $N > 3$
+to be instrumented with Obeah. Figure~\ref{} visualizes this configuration. We
+propose that any implementation of fault tolerant concecus such as
+Paxos~\cite{Lamport2001Paxos}, Raft~\cite{184040} or 3PC~\cite{1703048} must handel these failures.
 
 \subsection{$N/3 -1$}
 
@@ -51,6 +54,16 @@ the proposition they received, concencus among non-byzantine generals can be
 reached.
 
 In order to simulate such a scenerio $N/3 - 1$ instance of insturmented Obeah
-nodes must be run together in a cluster. File systems such as NFS have achived this level of fault tolerance with minimal overhead.
+nodes must be run together in a cluster. Figure~\ref{} visualizes this
+configuration. File systems such as NFS have achived this level of fault
+tolerance with minimal overhead~\cite{Castro:1999:PBF:296806.296824}.
 
 \subsection{$N-1$}
+
+Finally some systems require the complete resiliane of any given node subject all other nodes being byzantine. Lamport proposes by using an unforgable signature on each messages, an recursivly passing all receved messages to all other nodes, concensus can be reached where $B = N -1$.
+
+To simulate this scenerio all but a single node should be executed in an
+enviornment of Obeah instrumented nodes. Figure~\ref{} visualizes this
+configuration. Digital currency systems such a Bitcoin have achived this level
+of resiliane through the use of itterative public key
+encryption~\cite{Nakamoto_bitcoin:a}.
