@@ -4,17 +4,19 @@
 Our goal with Obeah is to manufacture byzantine faults during the execution of
 a distributed system. To do so obeah permutes variables set by received message
 to execute low probability, and unexpected paths through a program. In
-Section~\ref{instrumentation} we discussed how obeah collects control flow
+Section~\ref{sec:instrumentation} we discussed how obeah collects control flow
 constraints from a programs source code, and instruments the source code to log
 its control flow. In this section we describe how a programs execution is
 profiled, how low probability paths are calculated, and the process by which
 variables have their values perturbed.  Each instrumented node will exhibit
 byzantine behaviour during it's execution. We leave it to system developers to
-decide what degree of fault tolerance they wish to achieve. By running more
-instrumented nodes during a test, the number of faults injected will increase.
-For the purposes of discussion in this section, we will assume that an
-executing system contains a single instrumented node, with the rest running
-their original sources.
+decide what degree of fault tolerance they wish to achieve. As discussed in
+Section~\ref{sec:model} there are different granularities of byzantine
+tolerance a system can achieve, and be tested for. By running more instrumented
+nodes during a test, the number of faults injected will increase.  For the
+purposes of discussion in this section, we will assume that an executing system
+contains a single instrumented node, with the rest running their original
+sources.
 
 \subsection{Runtime Inputs, and Initialization}
 
@@ -42,7 +44,7 @@ executed. Executions of \emph{Taboo} are paired with received messages.
 Therefore starting a trace from each \emph{Taboo} execution profiles how the
 system behaves after a message is received. Each time an \emph{Log} function is
 executed, the unique identifier of a conditional is appended to the trace. When
-\emph{Taboo} is executed the current trace is processed, and a new one is
+\emph{Taboo} is executed the current trace is processed, and a new trace is
 begun. Each trace has a head, which is a potently starting point on which to
 compute a path. It is worthwhile to note that if the first conditional
 encountered after receiving a message was a large switch statement, a common
@@ -78,13 +80,11 @@ constraint solver to reason about path constraints. An unlikely path is
 formulated as the set of conditionals which need to be satisfied in order to
 execute the path. Within each conditional also has a set of variables
 associated with it. Obeah generates a program using Z3's python interface which
-attempts to solve the path constraint. If the formula is unsat, then obeah
-considers the path unfeasible. Unsat path constrains may well be executable
-paths due to the internal logic of the program. But in order to remain light
-weight, we do not attempt to reason about such cases. Instead the path is black
-listed to prevent computation on it in the future. If a satisfying assignment
-is found for the path constraints the satisfying variable values are set in the
-running program.
-
-
+attempts to solve the path constraint~\cite{z3github}. If the formula is unsat,
+then obeah considers the path unfeasible. Unsat path constrains may well be
+executable paths due to the internal logic of the program. But in order to
+remain light weight, we do not attempt to reason about such cases. Instead the
+path is black listed to prevent computation on it in the future. If a
+satisfying assignment is found for the path constraints the satisfying variable
+values are set in the running program.
 
