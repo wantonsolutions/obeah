@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Intro}
+\section{Introduction}
 \label{sec:intro}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -55,51 +55,60 @@ This process is slow, and has tight ties to bounded model checking where at any
 $n+1$ non-deterministic event an unsafe state may be reached.  Whitebox
 verification methods have also been developed recently. P\# is a verification
 language which has demonstrated its efficacy by being integrated with systems
-written in C\#~\cite{}. P\# allows users to write executable specifications of
-their systems, and harnesses, similar to those used by SLAM~\cite{}. Users than
+written in C\#~\cite{194442}. P\# allows users to write executable
+specifications of their systems, and harnesses, similar to those used by SLAM
+in device driver verification~\cite{Ball:2011:DSM:1965724.1965743}. Users than
 test one component of their real system against the simplified specification.
 Behind the scenes P\# verification engine enumerates the space of message inter
 leavings and non-deterministic failures in order to cause the system to violate
 either safety or liveness conditions. The downside to P\# is that developers
 must maintain large ammounts of extra source code, in the form of
 specifications in order to use P\#'s verification tool. In the centre of the
-spectrum are mixtures of verification and fuzz testing.  Digger is a tool for
-mixing symbolic execution and white box fuzz testing.  Digger uses AFL to fuzz
-test programs. When AFL is unable to explore new control flow paths, as is
-common which paths which have a low probability of being executed randomly are
-present, digger uses symbolic execution to determine what values will open up
-new control flow compartments. The values are then fed back into AFL, and the
-fuzz tester can continue to execute on new control flow paths. Digger has
-demonstrated it's utility, but it is tailored for sequential programs which
-perform large ammounts of file IO.
+spectrum are mixtures of verification and fuzz testing.  Driller is a tool for
+mixing symbolic execution and white box fuzz
+testing~\cite{Stephens2016DrillerAF}.  Driller uses AFL to fuzz test programs.
+When AFL is unable to explore new control flow paths, as is common which paths
+which have a low probability of being executed randomly are present, digger
+uses symbolic execution to determine what values will open up new control flow
+compartments. The values are then fed back into AFL, and the fuzz tester can
+continue to execute on new control flow paths. Digger has demonstrated it's
+utility, but it is tailored for sequential programs which perform large
+ammounts of file IO and not distributed systems.
 
-Here we propose obeah; a tool which uses SMT guided fuzz testing on distributed
-systems. Conceptually obeah is similar to digger, but the constrains of
-distributed systems demand a different approach than conventional fuzz testing.
-Obeah operates in two steps. First the source code of a system is instrumented
-to report control flow, and mine control flow information used at runtime.
-Second the system is tested under normal operating conditions with a subset of
-the nodes in the system running instrumented code. During execution the system
-is profiled. The profile consists of a weighted control flow graph. Once a
-sufficient confidence measure on the probability of control flow paths has been
-established obeah attempts to execute an low probability control flow path. To
-determine an low probability path a bounded breadth first search is performed on the
-runtime CFG, and the lowest probability path is selected as a candidate. During
-instrumentation each branching statement is annotated with the set of
-conditions which must be satisfied for its execution to occur. These
-conditionals include all parent conditionals within their local functions.
-Obeah passes the set of constraints for the path to the Z3 constraint solver
-which determines if the constraints are either unsat, or a set of variable
-values which satisfy the constraint. If a satisfying assignment is found obeah
-sets the values of variables which are set by incoming messages to the values
-determined by the constraint solver. This is processes is the same as receiving
-a byzantine message. The values of the modified variables are recorded and the
-system is allowed to progress. In the case where a failure occurs, the set of
-variables altered by obeah are reported to the developer. A specific
-contribution of obeah it's lack of symbolic execution. Adding latency to a
-distributed system can cause timers to execute when they would not have
+Here we propose Obeah; a tool which uses SMT guided fuzz testing on distributed
+systems written in Go. Conceptually Obeah is similar to Driller, but the
+constraints of distributed systems demand an approach different from
+conventional fuzz testing. Distributed systems cannot be fully tested by
+manipulating file IO at a single entrance point. Insted they send and receive
+messages from multipul connections using a variety of protocol. However,
+reading a message from the network is a direct analog for reading in a file.
+Our approach is to manipulate network messages in a similar way to fuzz
+testing, while also using a control flow profile of the system to perform smart
+manipulations on messages.  Obeah operates in two steps. First the source code
+of a system is instrumented to report control flow, and mine control flow
+information used during runtme analysis.  Second the system is tested under
+normal operating conditions with a subset of the nodes in the system running
+instrumented code. During execution the system is profiled. The profile
+consists of a weighted control flow graph. Once a sufficient confidence measure
+on the probability of control flow paths has been established Obeah attempts to
+execute an low probability control flow path. To determine an low probability
+path a bounded breadth first search is performed on the runtime CFG, and the
+lowest probability path is selected as a candidate. During instrumentation each
+branching statement is annotated with the set of conditions which must be
+satisfied for its execution to occur. These conditionals include all parent
+conditionals within their local functions.  Obeah passes the set of constraints
+for the path to the Z3 constraint solver which determines if the constraints
+are either unsat, or a set of variable values which satisfy the
+constraint~\cite{deMoura2008}. If a satisfying assignment is found Obeah
+directly modifies the values of variables which are set by incoming messages to
+the values determined by the constraint solver.  This is processes is the same
+as receiving a byzantine message. The values of the modified variables are
+recorded and the system is allowed to progress. In the case where a failure
+occurs, the set of variables altered by Obeah are reported to the developer. A
+specific contribution of Obeah it's lack of symbolic execution. Adding latency
+to a distributed system can cause timers to execute when they would not have
 normally. Obeah forgoes the formality of using symbolic execution for the sake
-of speed, and at the loss of precision. However, it's techniques are often
+of speed, and at the loss of precision.  However, it's techniques are often
 enough to drive systems into failure states.
 
 %eval
