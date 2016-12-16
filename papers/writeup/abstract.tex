@@ -4,25 +4,27 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Developing correct distributed systems is difficult. Conventional testing
-techniques, such as unit testing, fall short of realizing distributed
-complexity. Developers often rely on brute force methods for testing their
-systems end to end. Brute force testing is useful for checking typical
-executions, but it fails to cover the full space of non-deterministically
-introduced edge cases. To artificially test for non-deterministic bugs,
-developers can fuzz test their systems.  Unfortunately fuzz testing is
-unguided, leading to the majority of randomly generated inputs being handled by
-a small subset of error handling code. A more robust version of fuzz testing
-would be to generate inputs which forced a system to execute a previously
-untested control path. Here we propose Obeah a tool for which uses SMT guided
-fuzz testing to inject byzantine failures into distributed systems. Obeah
-profiles a systems execution and generates unlikely control flow paths. Upon
-receiving messages obeah augments the incoming network payload to attemt to the
-unlikely control path to be taken. Obeah only reasons about control flow
-constraints which improves the performance of constraint solving allowing for
-it to be used on running systems. In the result of a failure obeah outputs the
-sequence of intended control flow paths, and modifications to payloads. These
-output can help developers reason about the induced error state and defend
-against it.
+techniques, such as unit, and integration testing, fall short of realizing
+distributed systems in all their complexity. Developers often rely on brute
+force methods for testing their systems end to end. Brute force testing is
+useful for checking some corner cases, but it fails to cover the full space of
+non-deterministically introduced edge cases. Developers can attempt to test
+non-deterministic bugs, by fuzz test their systems.  Unfortunately fuzz testing
+is unguided, leading to the majority of randomly generated inputs being handled
+by a small subset of error handling code. Conversely developers can use
+symbolic execution to verify the correctness of their code, but modern
+verification techniques are unfeasible expensive for real distributed systems.
+A more pragmatic approach between fuzz testing, and verification would be to
+generate inputs which forced a system to execute a previously untested control
+path. Here we propose Obeah a tool for which uses SMT guided fuzz testing to
+inject byzantine failures into distributed systems. Obeah profiles a systems
+execution and generates improbable control flow paths. Upon receiving messages
+obeah augments the incoming network payload to attempt to the unlikely control
+path to be taken. Obeah only reasons about control flow constraints which
+improves the performance of constraint solving allowing for it to be used on
+running systems. In the result of a failure obeah outputs the sequence of
+intended control flow paths, and modifications to payloads. These output can
+help developers reason about the induced error state and defend against it.
 
 
 

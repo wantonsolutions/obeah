@@ -3,7 +3,7 @@
 \label{sec:future}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Obeahs analysis technique is limited for the sake of simplicity, however there
+Obeah's analysis technique is limited for the sake of simplicity, however there
 are many additions which could be implemented to extend coverage, and the
 replicability of faults.
 
@@ -11,62 +11,62 @@ replicability of faults.
 
 When obeah finds that a particular control flow path is unsat, it blacklists
 the path and considers it unreachable. This assumption is incorrect and made
-for the sake of simplicity. Intermittented operations between braching statmes
-could and likely manipulated the values of constraied variables and addtional
-knowledge about the function could lead to more precise constrations. The other
+for the sake of simplicity. Intermittent operations between branching statements
+could and likely manipulated the values of constrained variables and additional
+knowledge about the function could lead to more precise constraints. The other
 side of the problem is that some proportion of control flow paths which obeah
-belives are reachable may not be, or the determined assignment may be
-incorrect. In such situations anonymous functions could be used in conjuction
-with the control flow graph to better aproximate the behaivior of the program.
+believes are reachable may not be, or the determined assignment may be
+incorrect. In such situations anonymous functions could be used in conjunction
+with the control flow graph to better approximate the behavior of the program.
 For example at each point at which a branch is appended to a trace the values
 of network affected variables could be logged as well. Each edge of the CFG
 could be interpreted as an anonymous function, where the input was the values
 of each variable at the previous point, and the output is the value at the
-current branch. When an unprobable path is generated Z3 could be passed the set
+current branch. When an improbable path is generated Z3 could be passed the set
 of branch conditions with the additional constraint that they must satisfy the
 string of anonymous functions along the path. The research question is this
-domain would be \emph{What inner circutry would produce efficient, and accurate
+domain would be \emph{What inner circuitry would produce efficient, and accurate
 anonymous functions}
 
-\subsection{Learing and retrying over multiple executions}
+\subsection{Learning and retrying over multiple executions}
 
-One limiation of obeah is that it requires a setup time to generate faults. The
-faults are unpredicatable in that the paths which are executed are subject to
-the same nondetermanism as the distributed system itself. This leads to the
-problem of replicablilty. In order to determine preciesely the cause of
+One limitation of obeah is that it requires a setup time to generate faults. The
+faults are unpredictable in that the paths which are executed are subject to
+the same non-determanisim as the distributed system itself. This leads to the
+problem of replicability. In order to determine precisely the cause of
 failures it would be useful to recreate failures over multiple runs, and gains
-statistical confidence in the root of the failure. A possible exension for
-obeah would be to write out an entire histroy of an execution which lead to a
+statistical confidence in the root of the failure. A possible extension for
+obeah would be to write out an entire history of an execution which lead to a
 failure and attempt to recreate it minimally over subsequent executions.
-Similar work to this has been done in Demi~\cite{} demi uses delta debugging to
+Similar work to this has been done in Demi~\cite{} Demi uses delta debugging to
 minimize the set messages needed to re create a failure in a distributed
-system. Obeahs contribution to this work would be the means to generate the
+system. Obeah's contribution to this work would be the means to generate the
 fault in the first place.
 
-\subsection{Monitering entire clusters}
+\subsection{Monitoring entire clusters}
 
-Obeah currently only moniters insturmented nodes. This has the unfortunate side
+Obeah currently only monitors instrumented nodes. This has the unfortunate side
 effect that the actions of other nodes in the system are unobservable.
-Nondtermanisim among other nodes may lead to failures that obeah did not
-incite. False positive are a headache in verifiaction so facilities to minimize
-them would increase the usefullness of the tool. Fully insturmenting a cluster,
-and interleaving controled failures on all nodes would allow obeah to recreate
-bugs faster, and output the entire sequece of events which lead to a failed
+Non-determanism among other nodes may lead to failures that obeah did not
+incite. False positive are a headache in verification so facilities to minimize
+them would increase the usefulness of the tool. Fully instrumenting a cluster,
+and interleaving controlled failures on all nodes would allow obeah to recreate
+bugs faster, and output the entire sequence of events which lead to a failed
 state.
 
 \subsection{Solving paths across nodes}
 
 Obeah only has the ability to reason about the control flow of a single node,
 which limits it's power to affect other nodes in the system. A more complete
-approach would be to construct a distributed control flow graph post exeuction
-and attmpt to slove constraints on it. Post execution, in the case were all
+approach would be to construct a distributed control flow graph post execution
+and attempt to solve constraints on it. Post execution, in the case were all
 nodes were instrumented, a control flow graph would exist for all nodes. Using
-additional logging infomation such a vector clocks, sending and receiving
-control flow paths could be linked. Using anonymous functions represed on other
-nodes the payload of a message could be tailior to cause a failure which
+additional logging information such a vector clocks, sending and receiving
+control flow paths could be linked. Using anonymous functions repressed on other
+nodes the payload of a message could be tailor to cause a failure which
 resulted from one or more passed messages in the future. This approach would
 lead to a refined approach for finding protocol specific bugs. Current
 distributed verification techniques attempt to interleave all random
 non-deterministic events, which makes no attempts to reason about tested
-functionality. Intentionally triggering unprobably message sequences would
+functionality. Intentionally triggering low probability message sequences would
 attack problems likely untested by developers.
