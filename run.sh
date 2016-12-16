@@ -25,7 +25,7 @@ cp clean/$TESTFILE test.go
 obeah -file=test.go -v
 
 
-#run the test program
+run the test program
 go run test.go
 
 #generate cfg

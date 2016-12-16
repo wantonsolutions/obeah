@@ -26,6 +26,7 @@ var (
 
 //Target is a structure for holding control flow information about a given conditional
 //The name Target is meant to imply that these will be amied for at runtime.
+//Targets are overloaded for obeah points
 type Target struct {
 	Id        string
 	Line      int
@@ -98,7 +99,7 @@ func (t Target) String() string {
 
 func (t Target) LogVariableString() string {
     if len(t.Vars) <= 0 {
-        return "\"\","
+        return "\"\",nil"
     }
     var ids, pointers string
     for _, v := range t.Vars {
@@ -145,6 +146,8 @@ func Insturment(options map[string]string, l *log.Logger) (map[string]string, ma
 
 func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) (string, map[string]Target) {
 	lines := ControlFlowLines(fset, file, p)
+    taboos := GetTaboos(fset, file, p)
+    logger.Println(taboos)
 	buf := new(bytes.Buffer)
 	printer.Fprint(buf, fset, file)
 	split := strings.SplitAfter(buf.String(), "\n")
@@ -152,7 +155,13 @@ func InstrumentSource(fset *token.FileSet, file *ast.File, p *loader.Program) (s
 	id := 0
 	//ast.Print(fset, file)
 	for i := range split {
-		mergedSource = append(mergedSource, split[i])
+        //replace tabbo expression
+        t := i+2
+        if _, ok := taboos[t]; ok {
+			mergedSource = append(mergedSource, "obeah.Taboo(\""+taboos[t].Id+"\","+taboos[t].LogVariableString()+")\n")
+        } else {
+		    mergedSource = append(mergedSource, split[i])
+        }
 		if _, ok := lines[i+1]; ok {
 			//mergedSource = append(mergedSource,fmt.Sprintf("obeah.Log(`%d`)\n",i+1))
 			//cond := condToString(lines[i+1].Condition)
@@ -192,6 +201,31 @@ func getBrackets(fset *token.FileSet, file *ast.File) Brackets {
         return true
         })
     return b
+}
+
+func GetTaboos(fset *token.FileSet, file *ast.File, p *loader.Program) map[int]Target {
+	mapper := make(map[int]Target)
+    brackets := getBrackets(fset,file)
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch c := n.(type) {
+        case *ast.SelectorExpr:
+            switch x := c.X.(type) {
+            case *ast.Ident:
+                if x.Name == "obeah" && c.Sel.Name == "Taboo" {
+			        t := NewTarget()
+                    t.Id = fmt.Sprintf("%d",fset.Position(c.X.Pos()).Offset)
+                    t.Line = fset.Position(c.X.Pos()).Line
+			        getInScopeVars(c,brackets, file, p, t.Vars)
+                    mapper[t.Line] = t
+                    logger.Println("found taboo")
+                }
+            }
+        default:
+            break
+        }
+        return true
+    })
+    return mapper
 }
 
 func ControlFlowLines(fset *token.FileSet, file *ast.File, p *loader.Program) map[int]Target {
@@ -252,6 +286,39 @@ func ControlFlowLines(fset *token.FileSet, file *ast.File, p *loader.Program) ma
 		return true
 	})
 	return mapper
+}
+
+
+
+func getInScopeVars(t ast.Node,b Brackets, file *ast.File, p *loader.Program, variables map[string]Variable) {
+	defs := p.Created[0].Defs
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch i := n.(type) {
+		case *ast.Ident:
+			for d := range defs {
+                //these are type.Object
+				if i.Obj == d.Obj && defs[d] != nil { //the objects match
+                    if i.Pos() <= t.Pos() && b.depth(i.Pos()) <= b.depth(t.Pos()) {
+                        obj := defs[d]
+                        //dont add functions
+                        if strings.Contains(obj.Type().String(),"func") {
+                            break
+                        }
+                        v := NewVariable()
+                        v.Name = obj.Name()
+                        v.Id = obj.Id()
+                        v.Type = obj.Type().String()
+                        variables[v.Id] = v
+                        logger.Println(v.Id)
+                    }
+				}
+			}
+			break
+		default:
+			break
+		}
+		return true
+	})
 }
 
 //variables is filled with the variables from the conditional
@@ -451,3 +518,34 @@ func mapmerge(a, b map[string]Variable) {
 		a[key] = b[key]
 	}
 }
+
+func GetGlobalVariables(file *ast.File, fset *token.FileSet) map[string]Variable {
+    global_objs := file.Scope.Objects
+    for identifier, _ := range global_objs {
+		//get variables of type constant and Var
+		switch global_objs[identifier].Kind {
+		case ast.Var, ast.Con: //|| global_objs[identifier].Kind == ast.Typ { //can be used for diving into structs
+			logger.Printf("Global Found :%s\n", fmt.Sprintf("%v", identifier))
+			//results = append(results, fmt.Sprintf("%v", identifier))
+		}
+	}
+    return nil
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
