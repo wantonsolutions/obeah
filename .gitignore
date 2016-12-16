@@ -9,4 +9,5 @@
 *.enc
 *.dot
 *.png
+*me
 test/log_archive
