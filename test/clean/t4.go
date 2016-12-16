@@ -9,18 +9,18 @@ import (
 )
 
 const (
-	RUNS = 20
+	RUNS = 100
 	MOD  = 20
 )
 
 func main() {
 	logger := log.New(os.Stdout, "[obeah test]", log.Lshortfile)
-	obeah.Taboo()
+	obeah.Taboo("","",nil)
 
 	for i := 0; i < RUNS; i++ {
 		a := rand.Int() % MOD
 		b := rand.Int() % MOD
-		obeah.Taboo(a, b)
+	    obeah.Taboo("","",nil)
         switch a {
         case 5:
             if a == 5 {

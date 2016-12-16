@@ -41,7 +41,33 @@ func NewNode() *Node {
     return &Node{Hits: 0, Tar: NewTarget(), Children: make(map[string]*Node,0), ChildrenHits: make(map[string]int)}
 }
 
+func pathVariables(n []*Node) map[string]Variable {
+    vars := make(map[string]Variable,0)
+    for i := range n {
+        for j := range n[i].Tar.Vars {
+            vars[j] = n[i].Tar.Vars[j]
+        }
+    }
+    return vars
+}
 
+func getPathCondition(n []*Node) string {
+    if len(n) <= 0 {
+        return ""
+    }
+    var pathCondition string
+    conditions := make([]string,0)
+    for i := range n {
+        for j := range n[i].Tar.Condition {
+            conditions = append(conditions,n[i].Tar.Condition[j])
+        }
+    }
+    for i := 0; i < len(conditions)-1 ;i++ {
+        pathCondition += fmt.Sprintf("%s && ",conditions[i])
+    }
+    pathCondition += fmt.Sprintf("%s",conditions[len(conditions)-1])
+    return pathCondition
+}
 
 func generatePath() []*Node {
     min := 1.0
@@ -166,22 +192,26 @@ func initNow() {
 	initalized = true
 }
 
-func Log(id string, extra ...interface{}) {
+func Log(id string, names string, vars ...interface{}) {
 	checkInit()
 	traces[len(traces)-1] = append(traces[len(traces)-1], sTargets[id])
 }
 
 //Taboo messes up your program
-func Taboo(vars ...interface{}) {
+func Taboo(id, names string, vars ...interface{}) {
 	checkInit()
 	//print the last trace
 	tr := traces[len(traces)-1]
     processTrace(tr)
-    path := generatePath()
-    if len(traces) % 5 == 0 {
-        for _, n := range path {
-            logger.Println(n.String())
+    if len(traces) > 20 && len(traces) % 5 == 0 {
+        path := generatePath()
+        pv := pathVariables(path)
+        cont := getPathCondition(path)
+        
+        for _, v := range pv {
+            logger.Println(v.String())
         }
+        logger.Println(cont)
         DrawDot(heads)
     }
 	//start a new trace
