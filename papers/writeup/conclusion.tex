@@ -1,0 +1,16 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+\label{sec:conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+In this paper we have presented Obeah, a tool for byzantine fault generation
+using SMT guided fuzz testing. Obeah uses convenient automatic instrumentation
+for learning control flow information, and adding logging annotation to
+distributed systems written in Go. Obeah's profiles the control flow of running
+systems and computes unlikely control flow paths. Using Z3, Obeah solves
+constraints on the control flow. Satisfying assignments to control flow
+constraints are applied to variables to mimic byzantine messages. Further we have
+proposed a number of extensions to Obeah which would allow it to better reason
+about the logic of a program, reduce false positives, help developers to triage
+the source of faults, and reason about the control flow of other nodes in the
+system.
