@@ -41,9 +41,16 @@ a single byzantine node, is similar to protecting against the network, as it
 can generate arbitrary messages, and fail to respond, mimicking a partition.
 
 This level of fault tolerance requires a single node in a system, where $N > 3$
-to be instrumented with Obeah. Figure~\ref{} visualizes this configuration. We
+to be instrumented with Obeah. Figure~\ref{fig:single-byzantine} visualizes this configuration. We
 propose that any implementation of fault tolerant consensus such as
-Paxos~\cite{Lamport2001Paxos}, Raft~\cite{184040} or 3PC~\cite{1703048} must handel these failures.
+Paxos~\cite{Lamport2001Paxos}, Raft~\cite{184040} or 3PC~\cite{1703048} must
+handel these failures.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\linewidth]{fig/one-byzantine}%
+    \caption{System consisting of a single byzantine node\label{fig:single-byzantine}}%
+\end{figure}
 
 \subsection{$N/3 -1$}
 
@@ -54,16 +61,27 @@ the proposition they received, consensus among non-byzantine generals can be
 reached.
 
 In order to simulate such a scenario $N/3 - 1$ instance of instrumented Obeah
-nodes must be run together in a cluster. Figure~\ref{} visualizes this
-configuration. File systems such as NFS have achieved this level of fault
-tolerance with minimal overhead~\cite{Castro:1999:PBF:296806.296824}.
+nodes must be run together in a cluster. Figure~\ref{fig:quarum-byzantine}
+visualizes this configuration. File systems such as NFS have achieved this
+level of fault tolerance with minimal
+overhead~\cite{Castro:1999:PBF:296806.296824}.
+
+\begin{figure}[h] 
+    \centering
+    \includegraphics[width=0.5\linewidth]{fig/quarum-byzantine}%
+    \caption{System consisting of $N/3 -1$ byzantine nodes\label{fig:quarum-byzantine}}% 
+\end{figure}
 
 \subsection{$N-1$}
 
 Finally some systems require the complete resilience of any given node subject all other nodes being byzantine. Lamport proposes by using an unforgable signature on each messages, an recursively passing all received messages to all other nodes, consensus can be reached where $B = N -1$.
 
 To simulate this scenario all but a single node should be executed in an
-environment of Obeah instrumented nodes. Figure~\ref{} visualizes this
+environment of Obeah instrumented nodes. Figure~\ref{fig:n-1byzantine} visualizes this
 configuration. Digital currency systems such a BitCoin have achieved this level
 of resilience through the use of iterative public key
 encryption~\cite{Nakamoto_bitcoin:a}.
+
+\begin{figure}[h] \includegraphics[width=0.5\linewidth]{fig/n-1byzantine}%
+    \caption{System consisting of $N-1$ byzantine nodes\label{fig:n-1byzantine}}% 
+\end{figure}
